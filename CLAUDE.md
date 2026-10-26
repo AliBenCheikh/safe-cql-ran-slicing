@@ -19,3 +19,11 @@
 - Emplacement : Google Drive
 - Taille approximative : ~10 Go
 - Ne pas copier dans ce dépôt
+
+## Phase 2 : RÉVISION (par étapes)
+- Une branche git par étape (revision/NN-nom). Jamais de travail direct sur main.
+- Le notebook original et le PDF original ne sont jamais modifiés. Le nouveau code va dans src/.
+- Les scripts d'analyse de données sont en lecture seule sur les données (data/ est dans .gitignore).
+- Tout chiffre du papier révisé doit venir d'un script reproductible de src/, avec seed et version du dataset.
+- Chaque étape se termine par : tests dans tests/, un court rapport dans docs/, un commit.
+- Ne jamais inventer de résultats ni de citations.
