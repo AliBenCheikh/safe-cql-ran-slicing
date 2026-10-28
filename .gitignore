@@ -8,3 +8,5 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 data
+export_to_colab.py
+revision_colab.ipynb
