@@ -24,8 +24,9 @@ def update_lambda(lam, mean_cost, budget, eta):
     return max(0.0, lam + eta * (mean_cost / budget - 1.0))
 
 
-def train_safe_cql(train_df, seed, cfg=None, cost_tbl=None, quiet=True):
-    """Returns (q_net, zs, r_scale, hist, lam_hist). Tables are indexed [action, load_bin]."""
+def train_safe_cql(train_df, seed, cfg=None, cost_tbl=None, quiet=True, monitor=None):
+    """Returns (q_net, zs, r_scale, hist, lam_hist). Tables are indexed [action, load_bin].
+    hist entries also hold `lambda`, the value used DURING that epoch (lam_hist: value after the update)."""
     cfg = {**SAFE_CFG, **(cfg or {})}
     cost_tbl = cost_table_array() if cost_tbl is None else cost_tbl
     d, eta = cfg["budget"], cfg["eta"]
@@ -44,7 +45,11 @@ def train_safe_cql(train_df, seed, cfg=None, cost_tbl=None, quiet=True):
         state["lam"] = update_lambda(state["lam"], mean_cost, d, eta)
         lam_hist.append({"epoch": ep, "greedy_cost": mean_cost, "lambda": state["lam"]})
 
-    q_net, zs, r_scale, hist = train_cql(train_df, seed, cfg, reward_fn, on_epoch_end, quiet)
+    def log_lambda(q_net, ep, zs):
+        return {"lambda": state["lam"], **(monitor(q_net, ep, zs) if monitor else {})}
+
+    q_net, zs, r_scale, hist = train_cql(train_df, seed, cfg, reward_fn, on_epoch_end, quiet,
+                                         cost_tbl=cost_tbl, monitor=log_lambda)
     return q_net, zs, r_scale, hist, lam_hist
 
 
@@ -53,4 +58,5 @@ def run(train_df, seed, cfg=None, ckpt_dir=CKPT_DIR):
     q_net, zs, r_scale, hist, lam_hist = train_safe_cql(train_df, seed, cfg)
     save_checkpoint(os.path.join(ckpt_dir, f"safe_cql_seed{seed}.pt"), q_net, zs, r_scale, cfg, seed,
                     history=hist, lambda_history=lam_hist)
-    return q_net, zs, {"final_lambda": lam_hist[-1]["lambda"], "greedy_cost_last": lam_hist[-1]["greedy_cost"]}
+    return q_net, zs, {"final_lambda": lam_hist[-1]["lambda"], "greedy_cost_last": lam_hist[-1]["greedy_cost"],
+                       "history": hist}

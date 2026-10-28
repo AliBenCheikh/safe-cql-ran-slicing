@@ -11,8 +11,8 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from src.agents.cql import CKPT_DIR, mlp, soft_update
-from src.common import GAMMA, N_ACTIONS, fit_zscore, make_arrays, set_seed, state_tensor
+from src.agents.cql import CKPT_DIR, epoch_stats, mlp, soft_update
+from src.common import GAMMA, N_ACTIONS, cost_table_array, fit_zscore, make_arrays, set_seed, state_tensor
 
 IQL_CFG = {"hidden": 256, "gamma": GAMMA, "expectile": 0.7, "beta": 3.0, "epochs": 100, "batch": 1024,
            "lr": 3e-4, "tau": 0.005, "w_max": 100.0}
@@ -52,7 +52,8 @@ def iql_losses(nets, batch, cfg):
     return v_loss, q_loss, pi_loss
 
 
-def train_iql(train_df, seed, cfg=None, quiet=True):
+def train_iql(train_df, seed, cfg=None, quiet=True, cost_tbl=None, monitor=None):
+    """monitor(nets, epoch, zs) -> dict is merged into the epoch's history entry (diagnostics only)."""
     cfg = {**IQL_CFG, **(cfg or {})}
     set_seed(seed)
     zs = fit_zscore(train_df)
@@ -63,6 +64,8 @@ def train_iql(train_df, seed, cfg=None, quiet=True):
     params = [p for m in (nets.v, nets.q, nets.pi) for p in m.parameters()]
     opt = torch.optim.Adam(params, lr=cfg["lr"])
     gen = torch.Generator().manual_seed(seed)
+    lb = torch.as_tensor(train_df["load_bin"].to_numpy().copy(), dtype=torch.int64)
+    tbl = torch.as_tensor(cost_table_array() if cost_tbl is None else cost_tbl, dtype=torch.float32)
     hist = []
     for ep in range(cfg["epochs"]):
         perm = torch.randperm(n, generator=gen)
@@ -76,9 +79,14 @@ def train_iql(train_df, seed, cfg=None, quiet=True):
             opt.step()
             soft_update(nets.q_target, nets.q, cfg["tau"])
             tot += np.array([lv.item(), lq.item(), lp.item()]) * len(idx)
-        hist.append((tot / n).tolist())
+        lv_, lq_, lp_ = (tot / n).tolist()
+        rec = {"epoch": ep, "loss_v": lv_, "loss_q": lq_, "loss_pi": lp_,
+               **epoch_stats(nets.q, nets.pi, data, lb, tbl)}
+        if monitor:
+            rec.update(monitor(nets, ep, zs))
+        hist.append(rec)
         if not quiet:
-            print(f"epoch {ep}: v/q/pi = {hist[-1]}")
+            print(f"epoch {ep}: {rec}")
     return nets, zs, r_scale, hist
 
 
@@ -104,4 +112,4 @@ def run(train_df, seed, cfg=None, ckpt_dir=CKPT_DIR):
     cfg = {**IQL_CFG, **(cfg or {})}
     nets, zs, r_scale, hist = train_iql(train_df, seed, cfg)
     save_checkpoint(os.path.join(ckpt_dir, f"iql_seed{seed}.pt"), nets, zs, r_scale, cfg, seed, history=hist)
-    return nets, zs, {"history_last": hist[-1]}
+    return nets, zs, {"history_last": hist[-1], "history": hist}

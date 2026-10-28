@@ -100,3 +100,76 @@ def test_checkpoint_roundtrip(tmp_path):
     net2, ck = cql.load_q_net(p)
     x = torch.randn(4, 10)
     assert torch.allclose(net(x), net2(x)) and ck["seed"] == 3
+
+
+# ----------------------------------------------------------------------------- per-epoch history
+
+def _synth_df(n=300, seed=0):
+    import pandas as pd
+    from src.build_dataset import NS_COLS, STATE_COLS
+    rng = np.random.default_rng(seed)
+    df = pd.DataFrame(rng.normal(size=(n, 10)), columns=STATE_COLS)
+    for c in NS_COLS:
+        df[c] = rng.normal(size=n)
+    df["action"] = rng.integers(0, 8, n)
+    df["reward_embb_Mbps"] = rng.normal(5, 1, n)
+    df["urllc_frac_viol"] = rng.uniform(0, 0.1, n)
+    df["done"] = False
+    df["load_bin"] = rng.integers(0, 3, n)
+    df["cost_hat"] = 0.2
+    df["reservation"] = rng.integers(0, 20, n)
+    df["split"] = "train"
+    return df
+
+
+EPOCHS = 4
+SMALL = {"epochs": EPOCHS, "batch": 64, "hidden": 16}
+COMMON_KEYS = {"epoch", "q_logged", "q_max", "greedy_cost_train"}
+
+
+def test_history_one_entry_per_epoch():
+    df, tbl = _synth_df(), np.full((8, 3), 0.1)
+    runs = {
+        "cql": (cql.train_cql(df, 0, SMALL, cost_tbl=tbl)[3], {"loss", "bellman", "cons"}),
+        "safe_cql": (safe_cql.train_safe_cql(df, 0, SMALL, tbl)[3], {"loss", "bellman", "cons", "lambda"}),
+        "iql": (iql.train_iql(df, 0, SMALL, cost_tbl=tbl)[3], {"loss_v", "loss_q", "loss_pi"}),
+    }
+    for name, (hist, keys) in runs.items():
+        assert len(hist) == EPOCHS, name
+        assert [h["epoch"] for h in hist] == list(range(EPOCHS)), name
+        for h in hist:
+            assert set(h) == COMMON_KEYS | keys, name
+            assert all(np.isfinite(v) for v in h.values()), name
+            assert h["greedy_cost_train"] == pytest.approx(0.1)   # constant cost table
+        assert hist[-1]["q_max"] >= hist[-1]["q_logged"] - 1e-6
+
+
+def test_safe_cql_history_lambda_is_value_used_during_epoch():
+    df = _synth_df()
+    _, _, _, hist, lam_hist = safe_cql.train_safe_cql(df, 0, SMALL, np.full((8, 3), 0.2))
+    assert hist[0]["lambda"] == 0.0
+    assert [h["lambda"] for h in hist[1:]] == [l["lambda"] for l in lam_hist[:-1]]
+
+
+def test_monitor_does_not_change_training():
+    df, tbl = _synth_df(), np.full((8, 3), 0.1)
+    calls = []
+    for train in (cql.train_cql, iql.train_iql):
+        plain = train(df, 3, SMALL, cost_tbl=tbl)[0]
+        mon = train(df, 3, SMALL, cost_tbl=tbl, monitor=lambda m, ep, zs: calls.append(ep) or {"x": 1.0})[0]
+        sd = (lambda m: m.state_dict() if hasattr(m, "state_dict") else m)
+        for (k, a), (_, b) in zip(sd(plain).items(), sd(mon).items()):
+            assert torch.equal(a, b), k
+    assert calls == list(range(EPOCHS)) * 2
+
+
+def test_curves_val_uses_no_test_rows():
+    from src.evaluate import prepare_curves_val
+    df = _synth_df(600)
+    df.loc[df["reservation"] >= 14, "split"] = "test"
+    sub, val, r_tbl, c_tbl = prepare_curves_val(df)
+    train_res = set(df.loc[df["split"] == "train", "reservation"])
+    assert set(sub["reservation"]) | set(val["reservation"]) == train_res
+    assert not set(sub["reservation"]) & set(val["reservation"])
+    assert set(sub["split"]) == {"train"} and set(val["split"]) == {"train"}
+    assert r_tbl.shape == c_tbl.shape == (8, 3) and np.isfinite(c_tbl).all()

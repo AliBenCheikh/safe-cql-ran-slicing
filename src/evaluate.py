@@ -8,6 +8,10 @@ Reservation-level bootstrap (B=2000, seed 0) for the 95% CI; pct_safe = share of
 whose mean cost <= 0.03. RL agents: seeds 0..4, mean +- std (ddof=1).
 
     python -m src.evaluate --seeds 0 1 2 3 4
+
+Diagnostic mode (learning curves, never feeds the results table, never touches the test split):
+
+    python -m src.evaluate --curves-val
 """
 import argparse
 import json
@@ -19,8 +23,8 @@ from concurrent.futures import ProcessPoolExecutor
 import numpy as np
 
 from src import baselines as BL
-from src.build_dataset import git_hash
-from src.common import BUDGET, N_ACTIONS, cost_table_array, load_canonical, reward_table, split_val
+from src.build_dataset import fit_cost_table, git_hash, lookup_cost
+from src.common import BUDGET, N_ACTIONS, N_BINS, cost_table_array, load_canonical, reward_table, split_val, state_tensor
 
 B_BOOT = 2000
 BOOT_SEED = 0
@@ -108,6 +112,80 @@ def _job(args):
     return agent, seed, acts, extra
 
 
+# ----------------------------------------------------------------------------- learning curves (diagnostic)
+
+CURVES_OUT = "results/learning_curves_val.json"
+
+
+def prepare_curves_val(df):
+    """(sub, val, r_tbl, c_tbl) from the canonical frame. Keeps the TRAIN split only (the test split
+    is dropped here and never seen again); sub/val = 80/20 split by reservation (seed 0). Reward and
+    cost tables, and the `cost_hat` column used for training, are refit on `sub` only, so that the
+    validation reservations leak into neither the policy nor the DM estimate."""
+    train = df[df["split"] == "train"]
+    assert len(train) > 0 and set(train["split"]) == {"train"}
+    sub, val = split_val(train, 0.2, 0)
+    tbl = fit_cost_table(sub)
+    sub = sub.assign(cost_hat=lookup_cost(sub, tbl))
+    c_tbl = np.full((N_ACTIONS, N_BINS), np.nan)
+    c_tbl[tbl["action"].to_numpy(int), tbl["load_bin"].to_numpy(int)] = tbl["cost_hat"].to_numpy()
+    assert not np.isnan(c_tbl).any(), "sub-train cost table has an empty cell"
+    return sub, val.reset_index(drop=True), reward_table(sub), c_tbl
+
+
+def _curves_job(args):
+    """Train one agent on sub-train; every epoch, DM reward/cost of the greedy policy on validation."""
+    agent, seed, epochs = args
+    import torch
+    torch.set_num_threads(1)
+    from src.agents import cql, iql, safe_cql
+
+    df, _ = load_canonical()
+    sub, val, r_tbl, c_tbl = prepare_curves_val(df)
+    del df
+    k = val["reservation"].nunique()
+    boot_idx = np.random.default_rng(BOOT_SEED).integers(0, k, size=(B_BOOT, k))
+    cfg = {"epochs": epochs} if epochs else None
+
+    def monitor(model, ep, zs):
+        with torch.no_grad():
+            s = state_tensor(val, zs)
+            acts = (model.pi(s) if agent == "iql" else model(s)).argmax(1).numpy()
+        m = evaluate_policy(val, acts, r_tbl, c_tbl, BUDGET, boot_idx)
+        return {"dm_reward_mean": m["dm_reward_mean"], "dm_cost_mean": m["dm_cost_mean"]}
+
+    if agent == "iql":
+        _, _, _, hist = iql.train_iql(sub, seed, cfg, cost_tbl=c_tbl, monitor=monitor)
+    elif agent == "cql":
+        _, _, _, hist = cql.train_cql(sub, seed, cfg, cost_tbl=c_tbl, monitor=monitor)
+    else:
+        _, _, _, hist, _ = safe_cql.train_safe_cql(sub, seed, cfg, cost_tbl=c_tbl, monitor=monitor)
+    return agent, seed, hist
+
+
+def curves_val(a):
+    df, meta = load_canonical()
+    sub, val, _, _ = prepare_curves_val(df)
+    del df
+    jobs = [(ag, s, a.epochs) for ag in a.agents for s in a.seeds]
+    with ProcessPoolExecutor(a.workers, mp_context=mp.get_context("spawn")) as ex:
+        outs = list(ex.map(_curves_job, jobs))
+    curves = {ag: {seed: h for agent, seed, h in outs if agent == ag} for ag in a.agents}
+    res = {"meta": {
+        "script": "src/evaluate.py --curves-val", "git_commit": git_hash(), "dataset_version": meta["dataset_version"],
+        "diagnostic_only": True, "seeds": a.seeds, "epochs_override": a.epochs,
+        "split": "sub-train 80% / validation 20% of the TRAIN split, by reservation (seed 0); test never used",
+        "n_sub_windows": int(len(sub)), "n_val_windows": int(len(val)),
+        "n_sub_reservations": int(sub["reservation"].nunique()), "n_val_reservations": int(val["reservation"].nunique()),
+        "tables": "reward and cost tables (and the training cost_hat) refit on sub-train only",
+        "note": "dm_* are estimates from sub-train tables, not measured returns. Not a paper result.",
+    }, "curves": curves}
+    os.makedirs(os.path.dirname(a.curves_out) or ".", exist_ok=True)
+    with open(a.curves_out, "w") as f:
+        json.dump(res, f, indent=1)
+    print(f"wrote {a.curves_out}")
+
+
 # ----------------------------------------------------------------------------- main
 
 def main():
@@ -118,7 +196,13 @@ def main():
     ap.add_argument("--ckpt-dir", default="results/checkpoints")
     ap.add_argument("--out", default="results/evaluation_results.json")
     ap.add_argument("--agents", nargs="+", default=list(AGENTS))
+    ap.add_argument("--curves-val", action="store_true",
+                    help="diagnostic learning curves on a validation split of train (the test split "
+                         "is not used; --out is ignored)")
+    ap.add_argument("--curves-out", default=CURVES_OUT)
     a = ap.parse_args()
+    if a.curves_val:
+        return curves_val(a)
 
     df, meta = load_canonical()
     train, test = df[df["split"] == "train"], df[df["split"] == "test"].reset_index(drop=True)

@@ -10,7 +10,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from src.common import GAMMA, N_ACTIONS, fit_zscore, make_arrays, set_seed, state_tensor
+from src.common import GAMMA, N_ACTIONS, cost_table_array, fit_zscore, make_arrays, set_seed, state_tensor
 
 CFG = {"hidden": 256, "gamma": GAMMA, "alpha": 0.5, "epochs": 100, "batch": 1024, "lr": 3e-4, "tau": 0.005}
 CKPT_DIR = "results/checkpoints"
@@ -40,10 +40,30 @@ def cql_loss(q_net, q_target, batch, gamma, alpha, r=None):
     return bellman + alpha * cons, bellman, cons
 
 
-def train_cql(train_df, seed, cfg=None, reward_fn=None, on_epoch_end=None, quiet=True):
+@torch.no_grad()
+def epoch_stats(q_fn, pi_fn, data, load_bin, cost_tbl, chunk=65536):
+    """End-of-epoch diagnostics over the whole train set (forward only, no RNG):
+    mean Q(s, a_logged), mean max_a Q(s, .) and the mean tabular cost_hat of the greedy policy
+    (argmax of `pi_fn`, default `q_fn`). `load_bin` int64 [n], `cost_tbl` float [N_ACTIONS, N_BINS]."""
+    pi_fn = pi_fn or q_fn
+    n = len(data["a"])
+    ql = qm = gc = 0.0
+    for i in range(0, n, chunk):
+        s, a = data["s"][i:i + chunk], data["a"][i:i + chunk]
+        q = q_fn(s)
+        ql += q.gather(1, a[:, None]).double().sum().item()
+        qm += q.max(1).values.double().sum().item()
+        ag = pi_fn(s).argmax(1)
+        gc += cost_tbl[ag, load_bin[i:i + chunk]].double().sum().item()
+    return {"q_logged": ql / n, "q_max": qm / n, "greedy_cost_train": gc / n}
+
+
+def train_cql(train_df, seed, cfg=None, reward_fn=None, on_epoch_end=None, quiet=True,
+              cost_tbl=None, monitor=None):
     """Trains on `train_df` (train split). reward_fn(batch) -> reward used in the Bellman target;
     on_epoch_end(q_net, epoch, data) is called after each epoch (Safe-CQL's lambda update).
-    Returns (q_net, zs, r_scale, history)."""
+    monitor(q_net, epoch, zs) -> dict is merged into the epoch's history entry (diagnostics only).
+    Returns (q_net, zs, r_scale, history); history = one dict per epoch."""
     cfg = {**CFG, **(cfg or {})}
     set_seed(seed)
     zs = fit_zscore(train_df)
@@ -55,6 +75,8 @@ def train_cql(train_df, seed, cfg=None, reward_fn=None, on_epoch_end=None, quiet
     q_target.load_state_dict(q_net.state_dict())
     opt = torch.optim.Adam(q_net.parameters(), lr=cfg["lr"])
     gen = torch.Generator().manual_seed(seed)
+    lb = torch.as_tensor(train_df["load_bin"].to_numpy().copy(), dtype=torch.int64)
+    tbl = torch.as_tensor(cost_table_array() if cost_tbl is None else cost_tbl, dtype=torch.float32)
     hist = []
     for ep in range(cfg["epochs"]):
         perm = torch.randperm(n, generator=gen)
@@ -69,11 +91,16 @@ def train_cql(train_df, seed, cfg=None, reward_fn=None, on_epoch_end=None, quiet
             opt.step()
             soft_update(q_target, q_net, cfg["tau"])
             tot += np.array([loss.item(), bell.item(), cons.item()]) * len(idx)
-        hist.append((tot / n).tolist())
+        loss, bell, cons = (tot / n).tolist()
+        rec = {"epoch": ep, "loss": loss, "bellman": bell, "cons": cons,
+               **epoch_stats(q_net, None, data, lb, tbl)}
+        if monitor:
+            rec.update(monitor(q_net, ep, zs))
+        hist.append(rec)
         if on_epoch_end:
             on_epoch_end(q_net, ep, data)
         if not quiet:
-            print(f"epoch {ep}: loss/bellman/cons = {hist[-1]}")
+            print(f"epoch {ep}: {rec}")
     return q_net, zs, r_scale, hist
 
 
@@ -101,4 +128,4 @@ def run(train_df, seed, cfg=None, ckpt_dir=CKPT_DIR):
     cfg = {**CFG, **(cfg or {})}
     q_net, zs, r_scale, hist = train_cql(train_df, seed, cfg)
     save_checkpoint(os.path.join(ckpt_dir, f"cql_seed{seed}.pt"), q_net, zs, r_scale, cfg, seed, history=hist)
-    return q_net, zs, {"history_last": hist[-1]}
+    return q_net, zs, {"history_last": hist[-1], "history": hist}
