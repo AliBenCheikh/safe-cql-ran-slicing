@@ -48,3 +48,10 @@ Chemin des données (lecture seule) : /home/AliBen/data/safe-cql/dataset-kpm
 - Chaque scheduler occupe un bloc d'identifiants disjoint (1 bascule) : effet scheduler non séparable du moment d'exécution. Le signe n'est pas inversé par le choix des moitiés précoce/tardive (1 cas sur 24), ce qui ne lève pas la confusion.
 - Sur les 8 actions, nof_ue et le débit URLLC reçu dépendent de l'action ; à scheduler fixé (4 slicings) aucune dépendance détectée (p ≥ 0,10), donc la dépendance vient du scheduler ou du bloc.
 - Répétitions par (slicing, scheduler) : RR 18-55, PF 8-29 (voir le rapport).
+
+## Résultats de D8 (docs/d8_chronology.md)
+- Début absolu lu dans enb_metrics.csv (UTC) : 2024-02-09 → 2024-02-26 ; les 3 clusters se recouvrent dans le temps ; t0 identique à D6 pour 706/706.
+- Ordre des identifiants = ordre chronologique (Spearman 1,000 ; 5 inversions de ≤ 17 min) : l'hypothèse de D6/D7 est levée pour l'ordre.
+- PF et RR ne sont entrelacés dans aucun des 17 couples (script, slicing) : 2 blocs. a908e4cc et a53521b2 : PF puis RR à ≈ 8 jours d'écart ; c40f2fe7 (test) : PF puis RR à ≈ 13 h (bloc PF ≈ 10 j, bloc RR ≈ 1,5 j).
+- Paires PF/RR les plus proches : le coût PF − RR reste positif et du même ordre de grandeur (12/12, 12/12, 8/8 cellules pour 100/50/25 % des paires) ; le reward reste incohérent. Mais pour a908e4cc/a53521b2 les paires les plus proches restent à ≈ 8-9 jours : le moment d'exécution n'est pas séparé du scheduler.
+- Rupture du coût : meilleure coupure unique pour les 3 scripts, exactement à la bascule PF → RR ; aucune coupure significative à l'intérieur d'un bloc ; un saut jour-à-jour signalé (c40f2fe7, 20→21 fév., à la bascule).
