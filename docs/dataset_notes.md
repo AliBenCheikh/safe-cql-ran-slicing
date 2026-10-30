@@ -27,9 +27,16 @@ Chemin des données (lecture seule) : /home/AliBen/data/safe-cql/dataset-kpm
 ## Scripts de trafic partagés (md5 de bs/mgen-script-scope.mg*)
 - Les scripts sont massivement partagés entre réservations. Les 6 plus fréquents : 275, 270, 187, 120, 115, 60 réservations.
 - Les scripts dominants sont dans un seul cluster, avec 4 slicings x 2 schedulers (un script : 1 slicing x 2 schedulers ; un autre : 2 slicings x 2 schedulers).
-- Le slicing 5 n'apparaît dans aucun script dominant (cause non vérifiée).
+- Les scripts de 120, 115 et 60 réservations sont presque tous en slicing 5 (aucune réservation utilisable). Seuls 3 scripts sont utilisables avec 4 slicings x 2 schedulers : a908e4cc (cluster 2), a53521b2 (cluster 3), c40f2fe7 (cluster 1 = test).
 - Même script ne garantit pas la même charge observée (début de réservation, nof_ue, radio).
 - Exogénéité du trafic (boucle ouverte) : supposée, non vérifiée (protocole de transport MGEN non précisé dans le README).
 
 ## Ce que le dataset ne permet pas
 - Aucune transition avec changement d'action : pas de contrôle séquentiel identifiable.
+
+## Résultats de D6 (docs/d6_shared_scripts.md)
+- 19 scripts distincts, aucun partagé entre clusters.
+- Test (cluster 1) : 196 réservations dont 90 % sur un seul script (c40f2fe7). Train : 8 scripts, 94 % des réservations sur 2 scripts.
+- Les intervalles par réservation sous-estiment l'incertitude : l'unité indépendante est le script.
+- Les schedulers ont tourné par blocs dans le temps (PF puis RR, ordre supposé chronologique d'après les identifiants) : effet scheduler potentiellement confondu avec le moment d'exécution.
+- Trafic MGEN en UDP périodique (boucle ouverte) ; indépendance de nof_ue et du débit reçu vis-à-vis de l'action : non vérifiée.
