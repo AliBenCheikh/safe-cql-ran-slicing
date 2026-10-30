@@ -41,9 +41,10 @@ Chemin des données (lecture seule) : /home/AliBen/data/safe-cql/dataset-kpm
 - Les schedulers ont tourné par blocs dans le temps (PF puis RR, ordre supposé chronologique d'après les identifiants) : effet scheduler potentiellement confondu avec le moment d'exécution.
 - Trafic MGEN en UDP périodique (boucle ouverte) ; indépendance de nof_ue et du débit reçu vis-à-vis de l'action : non vérifiée.
 
-## Résultats de D6 (docs/d6_shared_scripts.md)
-- 19 scripts distincts, aucun partagé entre clusters.
-- Test (cluster 1) : 196 réservations dont 90 % sur un seul script (c40f2fe7). Train : 8 scripts, 94 % des réservations sur 2 scripts.
-- Les intervalles par réservation sous-estiment l'incertitude : l'unité indépendante est le script.
-- Les schedulers ont tourné par blocs dans le temps (PF puis RR, ordre supposé chronologique d'après les identifiants) : effet scheduler potentiellement confondu avec le moment d'exécution.
-- Trafic MGEN en UDP périodique (boucle ouverte) ; indépendance de nof_ue et du débit reçu vis-à-vis de l'action : non vérifiée.
+## Résultats de D7 (docs/d7_scheduler_order.md)
+- 3 scripts à 8 actions (a908e4cc, a53521b2, c40f2fe7) ; 587 de leurs 655 réservations utilisables ont une origine de temps-script acceptée.
+- Couverture : intersection stricte vide (réservations tronquées ou tardives, ≈ 18 %) ; le reste couvre le même segment (≈ 71 à 1 810 s du script).
+- PF − RR à slicing fixé : le coût est plus élevé en PF dans les 12 couples (script, slicing), +0,04 à +0,20, même ordre de grandeur entre scripts ; le reward n'est pas cohérent (signe variable, petit devant le bruit).
+- Chaque scheduler occupe un bloc d'identifiants disjoint (1 bascule) : effet scheduler non séparable du moment d'exécution. Le signe n'est pas inversé par le choix des moitiés précoce/tardive (1 cas sur 24), ce qui ne lève pas la confusion.
+- Sur les 8 actions, nof_ue et le débit URLLC reçu dépendent de l'action ; à scheduler fixé (4 slicings) aucune dépendance détectée (p ≥ 0,10), donc la dépendance vient du scheduler ou du bloc.
+- Répétitions par (slicing, scheduler) : RR 18-55, PF 8-29 (voir le rapport).
