@@ -40,3 +40,10 @@ Chemin des données (lecture seule) : /home/AliBen/data/safe-cql/dataset-kpm
 - Les intervalles par réservation sous-estiment l'incertitude : l'unité indépendante est le script.
 - Les schedulers ont tourné par blocs dans le temps (PF puis RR, ordre supposé chronologique d'après les identifiants) : effet scheduler potentiellement confondu avec le moment d'exécution.
 - Trafic MGEN en UDP périodique (boucle ouverte) ; indépendance de nof_ue et du débit reçu vis-à-vis de l'action : non vérifiée.
+
+## Résultats de D6 (docs/d6_shared_scripts.md)
+- 19 scripts distincts, aucun partagé entre clusters.
+- Test (cluster 1) : 196 réservations dont 90 % sur un seul script (c40f2fe7). Train : 8 scripts, 94 % des réservations sur 2 scripts.
+- Les intervalles par réservation sous-estiment l'incertitude : l'unité indépendante est le script.
+- Les schedulers ont tourné par blocs dans le temps (PF puis RR, ordre supposé chronologique d'après les identifiants) : effet scheduler potentiellement confondu avec le moment d'exécution.
+- Trafic MGEN en UDP périodique (boucle ouverte) ; indépendance de nof_ue et du débit reçu vis-à-vis de l'action : non vérifiée.
