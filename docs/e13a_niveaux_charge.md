@@ -40,7 +40,7 @@ Table-greedy construit sur la source, évalué sur la validation (DM).
 | B->A | k5 | 5 → 4 | [4.0, 6.0, 7.0] | [0.231, 0.545, 0.081, 0.143] | [6, 6, 6, 6] | 11.487 | 0.0311 | [0.0169 ; 0.0523] | 0.48 |
 | B->A | edges3_current | 3 → 3 | [3.5, 5.5] | [0.136, 0.222, 0.642] | [6, 4, 6] | 11.370 | 0.0303 | [0.0149 ; 0.0522] | 0.56 |
 
-Lecture : la ligne `edges3_current` redonne E11 (garde). Le coût transféré va de 0,0256 à 0,0520 (A→B) et de 0,0295 à 0,0357 (B→A) selon la partition ; **les IC bootstrap sont larges (largeur 0,03 à 0,07) et contiennent d dans presque toutes les lignes**. Aucun écart entre jeux n'est donc distinguable du bruit de rééchantillonnage, même conditionnel aux scripts, et aucun classement n'en est tiré. Seule la ligne `edges3_current` A→B a une borne basse de l'IC (0,0147) et une médiane (0,0375) qui restent loin de sa valeur ponctuelle (0,0520) [V] : le point à 0,0520 est dans la queue haute de ses réplicats (part ≤ d : 0,32 ; elle est de 0,44 à 0,80 dans les autres lignes).
+Lecture : la ligne `edges3_current` redonne E11 (garde). Le coût transféré va de 0,0256 à 0,0520 (A→B) et de 0,0295 à 0,0357 (B→A) selon la partition ; **les IC bootstrap sont larges (largeur 0,034 à 0,067) et contiennent d dans les 10 lignes**. Aucun écart entre jeux n'est donc distinguable du bruit de rééchantillonnage, même conditionnel aux scripts, et aucun classement n'en est tiré. Seule la ligne `edges3_current` A→B a une borne basse de l'IC (0,0147) et une médiane (0,0375) qui restent loin de sa valeur ponctuelle (0,0520) [V] : le point à 0,0520 est dans la queue haute de ses réplicats (part ≤ d : 0,32 ; elle est de 0,41 à 0,80 dans les autres lignes).
 
 ### Effectifs et IC par cellule (action × niveau)
 | sens | jeu | côté | réservations/cellule min · méd · max | cellules vides | ≤ 2 rés. | ≤ 5 rés. | < 20 fenêtres (repli) | sans IC | IC contient d |
@@ -67,7 +67,7 @@ Lecture : la ligne `edges3_current` redonne E11 (garde). Le coût transféré va
 | B->A | edges3_current | validation | 2 · 11 · 55 | 0/24 | 1 | 4 | 1 | 0 | 16/24 (0.67) |
 
 
-- **[V]** Sur les partitions à 2 niveaux, tous les effectifs sont élevés (≥ 7 réservations par cellule) ; sur les 3 niveaux actuels, une cellule source A→B n'a que 2 réservations et une cellule de validation B→A aussi (cellules du niveau de plus faible charge).
+- **[V]** Sur les partitions à 2 niveaux, tous les effectifs sont élevés (≥ 7 réservations par cellule) ; sur les 3 niveaux actuels, une cellule source A→B n'a que 2 réservations et une cellule de validation B→A aussi.
 - **[V]** La part de cellules dont l'IC contient d = 0,03 va de 0,38 à 0,67 selon les lignes (dénominateurs 16 à 32). Elle n'est pas monotone en k, et l'ordre de grandeur dépend surtout des effectifs.
 - **[V]** Aucune cellule n'est vide, aucune n'est sans IC.
 
@@ -77,7 +77,7 @@ Lecture : la ligne `edges3_current` redonne E11 (garde). Le coût transféré va
 3. **[H]** Le bootstrap suppose les réservations échangeables dans un script ; l'effet scheduler reste confondu avec le moment d'exécution (D7/D8) : changer k ne lève pas cette confusion.
 4. **[H]** Les arêtes et r_scale sont fixés à leur valeur du script source dans le bootstrap ; la variabilité due aux arêtes n'est pas propagée.
 5. Les tables restent tabulaires : cette analyse ne répond que partiellement à R1-W2, dont la critique porte aussi sur un critique continu non binné.
-6. 1 à 0 réplicat invalide sur 2000 selon les lignes (action absente d'une table rééchantillonnée), exclu du calcul de l'IC (`n_invalid` dans le JSON).
+6. 0 ou 1 réplicat invalide sur 2000 selon les lignes (action absente d'une table rééchantillonnée), exclu du calcul de l'IC (`n_invalid` dans le JSON).
 
 ## Questions ouvertes
 - **[Q]** Faut-il fixer, avant exécution, une découpe tolérante aux ex æquo (arêtes sur les entiers 5/6/7, ou quantiles randomisés par rang) pour tester vraiment 4 et 5 niveaux ? Non faite ici.
