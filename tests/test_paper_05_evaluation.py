@@ -62,3 +62,13 @@ def test_protocol_constants_match_code():
     tex = TEX.read_text(encoding="utf-8")
     for frag in ("2\\,000", "10\\%", "50\\%", "two standard deviations", "O\\_EXCL"):
         assert frag in tex, frag
+
+
+def _prose():
+    return "\n".join(l.split("%", 1)[0] for l in TEX.read_text(encoding="utf-8").splitlines())
+
+
+def test_no_claim_about_original_notebook_fqe():
+    prose = _prose()
+    assert not re.search(r"original notebook|incorrect|corrected version", prose)
+    assert "No Fitted Q Evaluation and no importance-weighted estimator is used." in prose
