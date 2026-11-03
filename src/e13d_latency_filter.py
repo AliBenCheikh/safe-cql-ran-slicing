@@ -59,7 +59,8 @@ def reservation_windows(res_dir):
         if m is None:
             continue
         m["lat"] = (m["Received Time"] - m["Sent Time"]) * 1000.0
-        frames.append(m)
+        if len(m):                                  # header-only files have object dtype and would contaminate the concat
+            frames.append(m)
     counts = {"n_packets": 0, "n_kept": 0, "n_neg": 0, "n_big": 0, "n_nan": 0, "n_nan_time_dropped": 0}
     if t0 is None or not frames:
         return None, counts
