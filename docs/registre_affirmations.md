@@ -116,26 +116,26 @@ Pour chaque affirmation que le papier révisé pourrait faire : l'énoncé préc
 
 Procédure [V] :
 - Configurations figées avant la lecture : `safe_cql_a0.1` (principal), `cql_a0.1`, `safe_cql_a0.5`, `cql_a0.5`, `safe_cql_a0.1_g0`, `iql`, plus 4 baselines.
-- Train complet (clusters 2-3), seeds 0-4, 100 epochs, politique = dernière epoch, aucune convergence exigée.
-- Tables DM ajustées sur le train. Bootstrap par réservation dans chaque script, B = 2 000, seed 0.
+- Train complet (clusters 2-3), seeds 0-4, 100 epochs, politique = dernière epoch, aucune convergence exigée. (e12_attente_pre_test)
+- Tables DM ajustées sur le train. Bootstrap par réservation dans chaque script, B = 2 000, seed 0. (e12_attente_pre_test ; test_results.json)
 
 Statut du test :
 - C'est la **seconde** lecture du test, pas une lecture aveugle. La phase 2 avait déjà lu le test avec CQL/Safe-CQL à α = 0,5, IQL et les baselines.
-- Seuls α = 0,1, la variante γ = 0 et la ventilation par script sont nouveaux.
+- Seuls α = 0,1, la variante γ = 0 et la ventilation par script sont nouveaux. (e12_attente_pre_test)
 - Les attentes (a) à (e) n'étaient donc pas aveugles.
 - Les scripts D6-D8 avaient aussi examiné c40f2fe7 (descriptif, sans réglage).
 
 Les trois scripts du test sont c40f2fe7 (177 réservations utilisables, 54 842 fenêtres), 1dd38082 (10 réservations, 3 157 fenêtres) et 3e1a4369 (9 réservations, 3 129 fenêtres, drapeau `low_n` = True). Effectifs lus dans `results/e12/test_results.json` (écrit par la run gelée `0fa5787`, valeurs lues, rien recalculé).
 
-Légende des chiffres : coûts DM suivis de leur IC 95 % bootstrap [bas ; haut]. « Appariée » = estimateur matched, couverture entre parenthèses.
+Légende des chiffres : coûts DM suivis de leur IC 95 % bootstrap [bas ; haut]. « Appariée » = estimateur matched, couverture entre parenthèses. (e12_rapport_final ; phase2_baselines)
 
 | id | énoncé précis | statut | source | limites | reviewer |
 |---|---|---|---|---|---|
 | E12-a | **Coût DM, c40f2fe7.** Safe-CQL α = 0,1 : 0,0315 [0,0290 ; 0,0344] (sd entre seeds 0,0016). Safe-CQL α = 0,5 : 0,0305 [0,0272 ; 0,0342] (0,0002). CQL α = 0,1 : 0,0551 [0,0491 ; 0,0612] (0,0023). CQL α = 0,5 : 0,0548 [0,0486 ; 0,0609] (0,0012). IQL : 0,0582 [0,0516 ; 0,0649] (0,0004). | [V] | e12_rapport_final ; sd entre seeds lus dans `results/e12/test_results.json` | DM sur tables d'entraînement. Le coût de Safe-CQL est en partie circulaire (il est construit sur la même table). Pas d'IC sur la différence entre agents : les IC mesurent la dispersion des réservations dans le script, pas celle entre scripts. Convention des IC des lignes RL = IC bootstrap de la valeur moyennée sur les seeds (`boot_stats` dans `src/e12_final.py`). | R3-W1, R3-W2 |
-| E12-b | **Coût DM, ensemble du test (« pooled »).** Safe-CQL 0,0310 [0,0288 ; 0,0335] (α = 0,1) et 0,0295 [0,0266 ; 0,0327] (α = 0,5). CQL 0,0536 / 0,0533. IQL 0,0569 [0,0512 ; 0,0630]. | [V] | e12_rapport_final ; phase2 (même 0,0295 pour α = 0,5) | « Pooled » ≈ 90 % un seul script. À ne pas lire comme un résultat sur plusieurs scripts. | R3-W1 |
+| E12-b | **Coût DM, ensemble du test (« pooled »).** Safe-CQL 0,0310 [0,0288 ; 0,0335] (α = 0,1) et 0,0295 [0,0266 ; 0,0327] (α = 0,5). CQL 0,0536 / 0,0533. IQL 0,0569 [0,0512 ; 0,0630]. | [V] | e12_rapport_final ; phase2_baselines (même 0,0295 pour α = 0,5) ; d6_shared_scripts (90 %) | « Pooled » ≈ 90 % un seul script. À ne pas lire comme un résultat sur plusieurs scripts. | R3-W1 |
 | E12-c | **Ordre des coûts, estimateur apparié.** c40f2fe7 : Safe-CQL 0,0274 [0,0183 ; 0,0379] (α = 0,1) / 0,0357 [0,0230 ; 0,0509] (α = 0,5) ; CQL 0,0415 [0,0301 ; 0,0547] / 0,0436 [0,0303 ; 0,0585] ; IQL 0,0452 [0,0320 ; 0,0601]. Couvertures 33,5-40,3 % (< 50 % pour tous les agents). Même ordre que le DM. | [V] | e12_rapport_final (attente (c)) ; IC lus dans `results/e12/test_results.json` (valeurs stockées par la run, non recalculées) | Couverture partielle : le sous-ensemble dépend de la politique. Les IC appariés se recouvrent largement entre Safe-CQL et CQL/IQL : l'ordre des **moyennes** est vérifié, pas une séparation par IC. | R3-W1 |
 | E12-d | **Reward DM, c40f2fe7.** Les agents sont proches : 6,73 à 7,12 Mbps (Safe-CQL α = 0,1 : 6,968 ; CQL α = 0,1 : 7,117 ; IQL : 6,787). | [V] | e12_rapport_final (attente (a)) | Le seuil « proche » (≤ 10 %) est arbitraire et fixé avant. | R3-W1 |
-| E12-e | **Aucune politique n'est démontrée sûre sur c40f2fe7.** Critère gelé : borne haute de l'IC 95 % ≤ d = 0,03 à la fois en DM et en apparié. DM : seules best-fixed (0,0156) et table-greedy (0,0230) passent. Apparié : les 10 bornes hautes dépassent d (Safe-CQL α = 0,1 : 0,0379 ; α = 0,5 : 0,0509 ; γ = 0 : 0,0478 ; always-RR : 0,0316 ; table-greedy : 0,0562 ; best-fixed : 0,0550 ; always-PF : 0,0814 ; IQL : 0,0601). Le critère est faux pour les 10 politiques. | DM [V] ; apparié [V] | e12_rapport_final (attente (e)) ; IC appariés lus dans `results/e12/test_results.json` (stockés par la run gelée, pas calculés a posteriori) | Les IC appariés sont larges (couverture 9,5-54,7 %) : l'absence de démonstration tient en partie au manque de puissance, elle ne prouve pas que les politiques sont dangereuses. Conditionnel au script. | R3-W1 |
+| E12-e | **Aucune politique n'est démontrée sûre sur c40f2fe7.** Critère gelé : borne haute de l'IC 95 % ≤ d = 0,03 à la fois en DM et en apparié. DM : seules best-fixed (0,0156) et table-greedy (0,0230) passent. Apparié : les 10 bornes hautes dépassent d (Safe-CQL α = 0,1 : 0,0379 ; α = 0,5 : 0,0509 ; γ = 0 : 0,0478 ; always-RR : 0,0316 ; table-greedy : 0,0562 ; best-fixed : 0,0550 ; always-PF : 0,0814 ; IQL : 0,0601). Le critère est faux pour les 10 politiques. | DM [V] ; apparié [V] | e12_rapport_final (attente (e)) ; IC appariés lus dans `results/e12/test_results.json` ; phase2_baselines (niveau 95 % du bootstrap) (stockés par la run gelée, pas calculés a posteriori) | Les IC appariés sont larges (couverture 9,5-54,7 %) : l'absence de démonstration tient en partie au manque de puissance, elle ne prouve pas que les politiques sont dangereuses. Conditionnel au script. | R3-W1 |
 | E12-f | **Table-greedy, c40f2fe7 :** reward DM 9,069, coût DM 0,0217 [0,0204 ; 0,0230], coût apparié 0,0310, couverture appariée 9,5 %. Il est au-dessus des agents en reward DM. | [V] chiffres ; [H] interprétation | e12_rapport_final ; phase2 finding 3 | Chiffre le plus circulaire (table du train, DM). Couverture appariée de 9,5 % seulement. Voir §8. | R3-W1 |
 | E12-g | **always-RR, c40f2fe7 :** reward DM 7,027, coût DM 0,0287 [0,0258 ; 0,0319], coût apparié 0,0216. Il est au niveau de Safe-CQL α = 0,1 (6,968 ; 0,0315). **always-PF :** 6,688 ; 0,1294 [0,1188 ; 0,1400]. | [V] | e12_rapport_final | Ces baselines lisent l'action loguée : conserver le niveau PRB loggé et fixer le scheduler. Ce ne sont pas des politiques déployables. | R3-W1 |
 | E12-h | **best-fixed :** reward 2,734, coût DM 0,0140, couverture 13,0 % (c40f2fe7). | [V] | e12_rapport_final ; phase2 finding 4 | Infaisable en validation en phase 2 (plus bas coût 0,0315 > d) : repli sur l'action de plus bas coût. | R3-W1 |
@@ -151,7 +151,7 @@ Légende des chiffres : coûts DM suivis de leur IC 95 % bootstrap [bas ; haut].
 - Train seul, scripts A = a908e4cc et B = a53521b2.
 - Toutes les valeurs sont **lues dans des tables** (estimateur DM), pas mesurées.
 - Le test n'est pas lu (`test_split_read: false`).
-- Budget d = 0,03.
+- Budget d = 0,03. (e1_lp_diagnostic)
 
 | id | énoncé précis | statut | source | limites | reviewer |
 |---|---|---|---|---|---|
@@ -181,7 +181,7 @@ Légende des chiffres : coûts DM suivis de leur IC 95 % bootstrap [bas ; haut].
 | TR-b | Le table-greedy transféré dépasse d en A→B (0,0520). En B→A il est à 0,0303, soit 1 % de d : « viole d » n'y est **pas établi**. | [V] en A→B ; [H] en B→A | e11 (correctif `ecb624d`) | Intervalle sur 0,0303 : non calculé en E11 ; voir TR-e. | — |
 | TR-c | Entraînée sur B, la Q-net a un coût greedy ≈ 0,031 sur les tables de B mais 0,050-0,062 lu dans les tables de A. Entraînée sur A, le coût lu dans B (0,023-0,031) est plus bas que le coût greedy propre. | [V] | e2 (coûts croisés) | Avec 2 scripts, on ne sépare pas « propriété de la paire » et « propriété générale ». | R2-W2 |
 | TR-d | « La sécurité ne se transfère pas entre scripts » : vérifiée dans **un** sens (A→B, 0,052 / 0,0520), pas dans l'autre (B→A, 0,030). | [V] sens A→B ; [H] pour la généralité | e1 ; e11 | Formulation sûre : « sur deux scripts, la contrainte respectée sur les tables d'un script a été violée sur l'autre dans un sens et respectée à 1 % près dans l'autre ». | R2-W2 |
-| TR-e | Le coût transféré (table-greedy, DM) a un IC 95 % de [0,0147 ; 0,0523] en B→A (3 niveaux actuels, 0,0303) et [0,0146 ; 0,0830] en A→B (0,0520) ; la part de réplicats ≤ d est de 0,53 (B→A) et 0,30 (A→B). | [V] | e13a2_resultats | Conditionnel aux deux scripts, réservations supposées échangeables ; ne mesure pas la variabilité entre scripts. E13a donne des valeurs très proches pour la même ligne (flux aléatoire différent : [0,0147 ; 0,0821], 0,32 et [0,0149 ; 0,0522], 0,56). | — |
+| TR-e | Le coût transféré (table-greedy, DM) a un IC 95 % de [0,0147 ; 0,0523] en B→A (3 niveaux actuels, 0,0303) et [0,0146 ; 0,0830] en A→B (0,0520) ; la part de réplicats ≤ d est de 0,53 (B→A) et 0,30 (A→B). | [V] | e13a2_resultats ; e13a_niveaux_charge (valeurs de comparaison) | Conditionnel aux deux scripts, réservations supposées échangeables ; ne mesure pas la variabilité entre scripts. E13a donne des valeurs très proches pour la même ligne (flux aléatoire différent : [0,0147 ; 0,0821], 0,32 et [0,0149 ; 0,0522], 0,56). | — |
 | TR-f | L'attente E12 « ni Safe-CQL ni table-greedy ne respectent d dans les deux sens » est **plus forte** que ce qu'E11 établit pour table-greedy. Sur le test, table-greedy a un coût DM de 0,0217 (c40f2fe7) mais un coût apparié de 0,0310 (couverture 9,5 %). | [V] pour la formulation des attentes ; [H] pour table-greedy sur le test | e12_attente_pre_test ; e12_rapport_final | Les deux estimateurs divergent pour table-greedy ; aucun IC apparié retrouvé. | — |
 
 ---
@@ -211,7 +211,7 @@ Légende des chiffres : coûts DM suivis de leur IC 95 % bootstrap [bas ; haut].
 ## 6. E13b : échantillonnage réel et limites de fenêtre (R2-W1)
 
 **Portée.**
-- 12 réservations du **train** (aucune du test), colonnes d'horodatage seulement, aucune valeur de KPM ni latence lue.
+- 12 réservations du **train** (aucune du test), colonnes d'horodatage seulement, aucune valeur de KPM ni latence lue. (e13b_pas_echantillonnage)
 - Échantillon choisi par rang chronologique dans chaque cellule (cluster 2/3 × scheduler).
 - La première exécution (`eab6758`) poolait par erreur les fichiers eMBB ; corrigée (`66d6cd3`) avant interprétation ; seuls les résultats corrigés sont rapportés.
 
@@ -243,7 +243,7 @@ Légende des chiffres : coûts DM suivis de leur IC 95 % bootstrap [bas ; haut].
 | E13d-e | **Ordre Safe-CQL < CQL < IQL à α = 0,1 :** identique avec le coût du pipeline et avec chaque borne, sur tout le train et sur chaque script (ex. 0,0300 / 0,0514 / 0,0524). **À α = 0,5 :** Safe-CQL (0,0326) reste sous CQL et IQL, mais CQL (0,0525) et IQL (0,0524) sont indiscernables ; la condition stricte « CQL < IQL » ne tient dans aucun des trois cas. | [V] | e13d_filtre_latence ; dataset_notes | **Dans l'échantillon** (tables et politiques sur les mêmes fenêtres). Sans intervalle. Ne dit rien sur l'ordre mesuré en E12. | R3-W1 |
 | E13d-f | Les fichiers `mgen` URLLC vides ne sont pas des « paquets écartés » : au moins un des 4 fichiers URLLC est vide dans 353/510 réservations (E13c) ; ces UE n'entrent pas du tout dans le coût. | [V] code et comptes | dataset_notes (E13c) ; e13d « Limites » 3 | Raison (UE non attaché ? panne ?) non établie [Q]. | R1-W2 |
 | E13d-g | Les 840 paquets écartés pourraient être les lignes à `Sent Time` aberrant vues en E13c. | [H] | e13d « Limites » 4 | Lignes non appariées. | — |
-| E13d-h | Effet du filtre sur le test : **inconnu**. | [Q] | e13d « Portée » | Les 196 réservations du test n'ont pas été lues en E13c ni en E13d. | R1-W2 |
+| E13d-h | Effet du filtre sur le test : **inconnu**. | [Q] | e13d « Portée » ; dataset_notes (196 réservations de test non lues en E13c) | Les 196 réservations du test n'ont pas été lues en E13c ni en E13d. | R1-W2 |
 
 ---
 
@@ -262,14 +262,14 @@ Pour chacune : ce que le papier ne doit pas dire, pourquoi, et ce qu'on peut dir
 - **Reviewers :** R1-W1, R2-W2.
 
 ### 8.2 Respect du budget
-- **À ne pas faire :** « Safe-CQL respecte le budget d = 0,03 », « le coût se stabilise sur le budget », « λ converge près de 12,9 », « le coût est contraint par construction ».
+- **À ne pas faire :** « Safe-CQL respecte le budget d = 0,03 », « le coût se stabilise sur le budget », « λ converge près de 12,9 », « le coût est contraint par construction ». Sources : audit_report (12,9), e2_safe_cql_diagnostic.
 - **Pourquoi :**
   - E12-e : sur c40f2fe7, aucune politique n'est démontrée sûre. La borne haute de l'IC DM de Safe-CQL est 0,0325-0,0344, au-dessus de d.
   - E2-a : 0/60 runs convergent.
   - E11-a : aucun α n'est faisable ; α = 0,1 est retenu par le repli.
   - AU-f : le λ enregistré du notebook est toujours croissant, avec un coût > d.
   - E1-c : λ* n'est pas précisément déterminé.
-- **Formulation défendable :** « sur le script de test c40f2fe7, le coût DM de Safe-CQL est de 0,0305-0,0315, plus bas que CQL/IQL (0,055-0,058), avec un intervalle dont la borne haute dépasse 0,03 ; aucune garantie ». Dire que les coûts sont lus dans des tables du train.
+- **Formulation défendable :** « sur le script de test c40f2fe7, le coût DM de Safe-CQL est de 0,0305-0,0315, plus bas que CQL/IQL (0,055-0,058), avec un intervalle dont la borne haute dépasse 0,03 ; aucune garantie ». Dire que les coûts sont lus dans des tables du train. Sources : e12_rapport_final (E12-a).
 - **Reviewers :** R1-W2, R3-W1.
 
 ### 8.3 Supériorité du RL sur une table
@@ -279,7 +279,7 @@ Pour chacune : ce que le papier ne doit pas dire, pourquoi, et ce qu'on peut dir
   - E11-e : la Q-net est moins bonne que le table-greedy transféré en reward (8,06 contre 10,35 ; 8,32 contre 11,37).
   - E12-g : always-RR atteint presque la même chose que Safe-CQL.
   - Phase 2 : l'apport du RL « n'est pas soutenu » par cette évaluation.
-  - Réserve sur table-greedy : DM circulaire et couverture appariée de 9,5 % ; mais cette réserve va aussi contre le RL, pas en sa faveur.
+  - Réserve sur table-greedy : DM circulaire et couverture appariée de 9,5 % ; mais cette réserve va aussi contre le RL, pas en sa faveur. Source : e12_rapport_final.
 - **Formulation défendable :** « Safe-CQL a un coût plus bas que CQL et IQL à reward comparable ; une table construite sur les mêmes cellules fait au moins aussi bien selon l'estimateur DM ».
 - **Reviewers :** R3-W1, R3-W2.
 
@@ -355,7 +355,7 @@ Pour chacune : ce que le papier ne doit pas dire, pourquoi, et ce qu'on peut dir
 
 ### 9.3 Questions ouvertes transversales
 
-- **[Q]** Que valent les anomalies d'horodatage et le filtre de latence sur les 196 réservations du test ?
+- **[Q]** Que valent les anomalies d'horodatage et le filtre de latence sur les 196 réservations du test ? (e13d_filtre_latence ; dataset_notes)
 - **[Q]** Le moment d'exécution peut-il être séparé du scheduler (relance de réservations entrelacées) ?
-- **[Q]** Le λ = 12,22 du notebook vient-il de la taille d'entraînement (tout le train) ou d'autre chose ?
-- **[Q]** Le slicing 5 est-il « pas de slicing » ou « 50 PRB eMBB » ?
+- **[Q]** Le λ = 12,22 du notebook vient-il de la taille d'entraînement (tout le train) ou d'autre chose ? (audit_report ; e2_safe_cql_diagnostic)
+- **[Q]** Le slicing 5 est-il « pas de slicing » ou « 50 PRB eMBB » ? (decision_memo)
