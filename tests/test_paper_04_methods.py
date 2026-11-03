@@ -62,3 +62,28 @@ def test_config_values_match_code():
     assert '"expectile": 0.7' in iql and '"beta": 3.0' in iql and '"w_max": 100.0' in iql
     for frag in ("256", "1\\,024", "3\\times10^{-4}", "0.005", "$\\eta=0.1$", "0.7", "3.0"):
         assert frag in tex, frag
+
+
+def _sentences_with(txt, start):
+    return [l.split("%", 1)[0].strip() for l in txt.splitlines() if l.startswith(start)]
+
+
+def test_gamma_sentences_identical_in_03_and_04():
+    t03 = (ROOT / "paper" / "sections" / "03_formulation.tex").read_text(encoding="utf-8")
+    t04 = TEX.read_text(encoding="utf-8")
+    for start in ("The agents of the main comparison are trained", "The variant with $\\gamma=0$"):
+        a, b = _sentences_with(t03, start), _sentences_with(t04, start)
+        assert len(a) == 1 and a == b, start
+
+
+def test_no_code_or_doc_annotations_left():
+    for name in ("03_formulation.tex", "04_methods.tex"):
+        txt = (ROOT / "paper" / "sections" / name).read_text(encoding="utf-8")
+        assert "CODE:" not in txt and "DOC:" not in txt, name
+
+
+def test_artefact_reader_never_opens_test_results():
+    src = (ROOT / "src" / "checks" / "lit_artefacts_entrainement.py").read_text(encoding="utf-8")
+    # aucun chemin construit vers test_results, aucune lecture : seul train_summary.json est ouvert
+    assert not re.search(r'(/|Path\(|open\()[^\n]*"test_results', src)
+    assert 'SUMMARY = E12 / "train_summary.json"' in src and 'assert meta["test_split_read"] is False' in src

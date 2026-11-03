@@ -345,7 +345,7 @@ Pour chacune : ce que le papier ne doit pas dire, pourquoi, et ce qu'on peut dir
 | chiffre | où on l'attendrait | effet |
 |---|---|---|
 | `pct_safe` par politique en E12 : présent dans `results/e12/test_results.json` mais **non repris** dans le registre | — | aucun énoncé du registre ne l'utilise |
-| λ finaux et statut de convergence des runs E12 | idem | E12 ne l'exige pas |
+| λ finaux des runs E12 | `results/e12/train_summary.json` | **retrouvés** (E12P-c, `docs/e12_artefacts_entrainement.md`) ; le statut de convergence au sens d'E2 reste non calculé |
 | Résultats d'une analyse de queue (`urllc_p99`) ou d'un critique continu | aucun rapport | R1-W2 non couvert |
 | Résultats complets de la phase 3 (100 epochs × 5 seeds, courbes) | `phase3_learning_curves.md` | seul un smoke test est mentionné (« pas des résultats ») |
 | Rapport propre pour E13c | seul `dataset_notes.md` (E13c) | chiffres repris de là, scripts `src/e13c_anomalies.py` |
@@ -367,3 +367,59 @@ Pour chacune : ce que le papier ne doit pas dire, pourquoi, et ce qu'on peut dir
 - **[Q]** Le moment d'exécution peut-il être séparé du scheduler (relance de réservations entrelacées) ?
 - **[Q]** Le λ = 12,22 du notebook vient-il de la taille d'entraînement (tout le train) ou d'autre chose ? (audit_report ; e2_safe_cql_diagnostic)
 - **[Q]** Le slicing 5 est-il « pas de slicing » ou « 50 PRB eMBB » ? (decision_memo)
+
+---
+
+## 10. Agents, baselines, protocole et artefacts d'entraînement (lus dans `src/`)
+
+**Portée.**
+- Lignes ajoutées pour que la section 03 et la section 04 du papier puissent citer un identifiant au lieu d'un chemin de code.
+- **[V]** = lu dans le code cité, ou recopié d'un artefact d'**entraînement** (`results/e12/train_summary.json`, `results/e12/checkpoints/*.pt`, via `docs/e12_artefacts_entrainement.md`). Aucun résultat d'évaluation du test n'est utilisé ici.
+- Le vérificateur ne lit pas les fichiers `.py` : les nombres de ces lignes sont recoupés avec un rapport de `docs/` cité dans la colonne « source ». Les nombres écrits entre accents graves ne sont pas vérifiés par le script.
+- Rien n'est entraîné ni évalué pour ces lignes.
+
+### 10.1 Contexte, récompense, enregistrements (`src/build_dataset.py`, `src/common.py`)
+
+| id | énoncé précis | statut | source | limites | reviewer |
+|---|---|---|---|---|---|
+| STATE-a | Le contexte de 10 dimensions est, dans l'ordre : `nof_ue`, `rsrp`, `dl_snr`, `dl_mcs`, `dl_bler`, `ul_buff` (fenêtre courante), puis les retards 1 et 2 de `reward_embb_Mbps` et de `urllc_p50`. Ni la récompense courante, ni `urllc_p50` courant, ni le coût courant n'en font partie. | [V] code | `src/build_dataset.py` (`STATE_COLS`, `RADIO_COLS`, `LAG_COLS`) ; phase1_pipeline | La configuration (PRB, scheduler) n'est pas une variable du contexte. Le contexte reste informatif sur l'action loguée (D4-a). | R1-W1 |
+| REW-a | La récompense de la fenêtre est le débit de la slice eMBB en Mbps : pour chaque UE eMBB attaché (suffixes IMSI 002 à 005), moyenne de `dl_brate` sur les échantillons de la fenêtre, puis somme sur les UE, divisée par 10⁶. Les indicateurs radio sont la moyenne des échantillons des UE eMBB attachés de la fenêtre. | [V] code | `src/build_dataset.py` (`_embb_stream`, `reward_embb_Mbps`) | L'alignement d'horloge des UE est estimé (D2-a, D2-b). | R2-W1 |
+| REC-a | Chaque enregistrement d'entraînement porte `c` = `cost_hat`, la valeur de la table de coût pour l'action **loguée** de la ligne dans le bin de charge de la ligne (3 bins, 8 actions). Le dernier pas d'un épisode est terminal : sa cible de Bellman est la récompense. | [V] code | `src/common.py` (`make_arrays`, `cost_table_array`) ; phase1_pipeline | La valeur de `c` ne dépend que de l'action loguée : elle n'indique pas le coût d'une action choisie par la politique. | R1-W2 |
+| SCALE-a | Le z-score du contexte (moyenne et écart-type) et `r_scale` (écart-type de `reward_embb_Mbps`) sont ajustés sur le split d'entraînement seul ; la récompense des enregistrements est `reward_embb_Mbps / r_scale`. | [V] code | `src/common.py` (`fit_zscore`, `make_arrays`), `src/agents/cql.py` (`train_cql`), `src/agents/iql.py` (`train_iql`) | — | — |
+| SCALE-b | La valeur enregistrée de `r_scale` est 4,0758 (4.0757787775968035), identique dans les 30 checkpoints d'E12. | [V] artefact d'entraînement | e12_artefacts_entrainement | Il s'agit de l'écart-type des fenêtres d'entraînement (clusters 2 et 3), en Mbps. Le 4,08 de `e1_lp_diagnostic.md` est celui de la table TRAIN (autre calcul). | — |
+
+### 10.2 Agents (`src/agents/`)
+
+| id | énoncé précis | statut | source | limites | reviewer |
+|---|---|---|---|---|---|
+| ARCH-a | Chaque réseau est un perceptron à deux couches cachées de 256 unités ReLU, avec une sortie par action (8 actions). CQL et Safe-CQL ont un réseau en ligne et un réseau cible ; IQL a quatre réseaux (V, Q, Q cible, politique). | [V] code | `src/agents/cql.py` (`mlp`, `CFG`), `src/agents/iql.py` (`IQLNets`) ; phase2_baselines | — | — |
+| OPT-a | Optimiseur Adam, taux d'apprentissage `3e-4`, batch de 1 024 fenêtres, ordre des fenêtres permuté à chaque époque, mise à jour douce du réseau cible de taux 0,005, 100 époques. Aucun écrêtage de gradient, aucun planning du taux, aucun Q double écrêté : un seul réseau Q en ligne par agent. IQL écrête le poids de la politique (`w_max`), pas le gradient. | [V] code | `src/agents/cql.py` (`CFG`, `train_cql`, `soft_update`), `src/agents/iql.py` (`IQL_CFG`) ; phase2_baselines | La description de la version initiale (minimum de deux critiques, écrêtage de gradient, τ = 0,01) ne correspond pas au code ; la présente ligne la remplace. | R3-W3 |
+| CQL-a | Perte de CQL : erreur de Bellman (MSE) plus α fois la moyenne de `logsumexp_a Q(s,a) − Q(s, a_loguée)`. La cible est `r + γ (1 − done) Q_cible(s', argmax_a' Q_en_ligne(s', a'))` (cible de type double DQN). La politique est `argmax_a Q(s,a)`. | [V] code | `src/agents/cql.py` (`cql_loss`, `greedy_actions`) | Avec α = 0 la pénalité est nulle. | — |
+| IQL-a | IQL : régression d'expectile (0,7) de `Q_cible(s, a_loguée)` sur `V(s)` ; perte Q : MSE vers `r + γ (1 − done) V(s')` ; perte de politique : entropie croisée sur l'action loguée pondérée par `min(exp(β (Q_cible − V)), w_max)` avec β = 3,0 et `w_max` = 100 ; politique = arg max des logits. Les trois pertes sont additionnées et optimisées par un seul Adam. | [V] code | `src/agents/iql.py` (`IQL_CFG`, `iql_losses`, `expectile_loss`, `greedy_actions`) ; phase2_baselines | Expectile, β et écrêtage du poids : choix de l'analyste, non réglés (phase2_baselines). IQL n'utilise pas le coût. | — |
+| SAFE-a | Safe-CQL entraîne l'agent de CQL-a sur la récompense pénalisée `r/r_scale − λ (c/d − 1)`, avec `c` = `cost_hat` de l'action loguée (REC-a) et d = 0,03 ; elle remplace `r/r_scale` dans la cible. | [V] code | `src/agents/safe_cql.py` (`train_safe_cql`, `reward_fn`) ; e2_safe_cql_diagnostic | Le coût est exprimé en unités du budget pour que λ soit à l'échelle de la récompense standardisée (commentaire du code). | — |
+| SAFE-b | Montée duale, une fois par époque : `λ ← max(0, λ + η (Ĵ_C / d − 1))`, avec Ĵ_C la moyenne, sur toutes les lignes d'entraînement, de la table de coût pour l'action greedy courante dans le bin de la ligne ; λ commence à 0 ; η = 0,1. La politique utilisée est `argmax_a Q(s,a)`, sans pénalité à la décision. | [V] code | `src/agents/safe_cql.py` (`update_lambda`, `on_epoch_end`, `SAFE_CFG`) ; e2_safe_cql_diagnostic | Signal calculé dans l'échantillon (tables et fenêtres d'entraînement) : voir AU-c. | R1-W2 |
+
+### 10.3 Baselines sans apprentissage (`src/baselines.py`)
+
+| id | énoncé précis | statut | source | limites | reviewer |
+|---|---|---|---|---|---|
+| TG-a | Table-greedy : pour chaque bin de charge, l'action de reward moyen d'entraînement maximal parmi les actions dont le coût de table est au plus d ; si aucune n'est faisable dans le bin, l'action de coût de table minimal. | [V] code | `src/baselines.py` (`table_greedy_map`, `table_greedy`) | Il n'utilise que le bin de charge. Son estimation DM est circulaire (E12-f, AU-c). | R3-W1 |
+| BASE-a | Always-RR et always-PF gardent le niveau de PRB de l'action loguée et fixent le scheduler (`(a//2)*2`, `(a//2)*2 + 1`) ; ils lisent l'action loguée et ne sont pas déployables. Best-fixed : l'action de reward moyen maximal en validation parmi celles de coût moyen au plus d, sinon l'action de coût moyen minimal ; la validation est 20 % des réservations d'entraînement (seed 0, 102 réservations). | [V] code | `src/baselines.py` (`always_rr`, `always_pf`, `best_fixed`) ; phase2_baselines | — | R3-W1 |
+| BC-a | Il n'existe aucun agent de clonage de comportement dans `src/` ; ni `CONFIGS` ni `BASELINES` d'E12 n'en contiennent. Les seuls chiffres BC du dépôt sont ceux du notebook (cellule 13) : exactitude de test 0,403, exactitude du scheduler 0,664, exactitude du niveau de PRB 0,576 ; la courbe d'apprentissage BC est calculée sur le cluster de test. | [V] absence dans le code ; chiffres = sorties enregistrées du notebook, **non reproduites** | audit_report ; decision_memo ; `src/e12_final.py` | Lecture d'origine : le notebook original, qui évaluait BC sur le cluster de test. Le mémo de décision compare ces chiffres à ceux de classifieurs triviaux (même plage) ; ce n'est pas une reproduction. | R3-W1 |
+
+### 10.4 Protocole E12 et artefacts d'entraînement
+
+| id | énoncé précis | statut | source | limites | reviewer |
+|---|---|---|---|---|---|
+| E12P-a | L'entraînement d'E12 utilise tout le split d'entraînement (clusters 2 et 3), les seeds 0 à 4, 100 époques, et la politique est celle de la dernière époque, sans choix de point de contrôle. La phase `--train` ne charge que le split d'entraînement ; le résumé enregistré porte `test_split_read: false`. | [V] code ; [V] artefact | `src/e12_final.py` (`SEEDS`, `EPOCHS`, `load_train`, `train_phase`) ; e12_attente_pre_test ; e12_artefacts_entrainement | La lecture finale du test est la seconde (E12-k). | R3-W1 |
+| E12P-b | Les 6 configurations d'E12 sont, avec (α, γ) : `safe_cql_a0.1` (0,1 ; 0,7), `cql_a0.1` (0,1 ; 0,7), `safe_cql_a0.5` (0,5 ; 0,7), `cql_a0.5` (0,5 ; 0,7), `safe_cql_a0.1_g0` (0,1 ; 0), `iql` (sans α ; 0,7). Les checkpoints enregistrent ces valeurs et, pour Safe-CQL, `budget` = 0,03 et η = 0,1. | [V] code ; [V] artefact | `src/e12_final.py` (`CONFIGS`) ; e12_attente_pre_test ; e12_artefacts_entrainement | — | R3-W1 |
+| E12P-c | Valeurs finales (époque 99) sur les 5 seeds, lues dans les artefacts d'entraînement. `safe_cql_a0.1` : λ de 0,1028 à 0,1272, coût greedy d'entraînement de 0,0294 à 0,0306. `safe_cql_a0.5` : λ de 0,7497 à 0,9046, coût de 0,0323 à 0,0329. `safe_cql_a0.1_g0` : λ de 0,4398 à 0,4910, coût de 0,0318 à 0,0324. Dans chacun des quinze runs Safe-CQL, λ à l'époque 99 est supérieur à λ à l'époque 79. | [V] artefact d'entraînement | e12_artefacts_entrainement | Coût greedy lu dans la table d'entraînement sur les fenêtres d'entraînement (dans l'échantillon). Ces λ sont loin de la valeur du notebook (`12,22`), **non reproduite** (AU-f, E2-b). Aucun critère de convergence n'est calculé ici ; E2-a et E11-d restent les références. | R1-W2 |
+| E12P-d | Les agents sont appliqués en sélecteurs à un pas : chaque fenêtre reçoit l'action `argmax` du réseau Q (ou des logits de politique pour IQL), sans suite d'actions. | [V] code | `src/e12_final.py` (appels à `greedy_actions`), `src/agents/cql.py`, `src/agents/iql.py` | — | R1-W1, R2-W2 |
+
+### 10.5 Choix de α (E11, `src/e11_alpha_grid.py`)
+
+| id | énoncé précis | statut | source | limites | reviewer |
+|---|---|---|---|---|---|
+| GRID-a | La grille est α ∈ {0 ; 0,02 ; 0,05 ; 0,1 ; 0,2 ; 0,5}, dans les deux sens (A→B, B→A), seeds 0 à 4, 100 époques : 60 runs, tous terminés. Les plis sont les scripts a908e4cc (A) et a53521b2 (B) du split d'entraînement. | [V] code ; [V] rapport | `src/e11_alpha_grid.py` (`ALPHAS`, `SEEDS`, `EPOCHS`, `OTHER`) ; e11_alpha_grid | Le test n'est pas lu. Deux scripts seulement (D6-b). | R3-W1 |
+| GRID-b | Règle de sélection (`select_alpha`), gelée avant la grille : un α est faisable si son coût de validation moyen est au plus d dans les deux sens ; parmi les faisables, on garde le reward moyen maximal, les α à moins de 0,01 Mbps du maximum étant à égalité et le plus petit étant retenu ; s'il n'y en a aucun, repli sur l'α de coût de validation moyen minimal sur les deux sens, avec le statut `infeasible: no configuration is feasible`. | [V] code ; [V] rapport | `src/e11_alpha_grid.py` (`select_alpha`, `TIE_REWARD`) ; e11_alpha_grid | Moyenner les deux sens masque leur opposition (E11-c). | R3-W1 |
+| GRID-c | Les valeurs de α de la grille ont été fixées après E2, qui avait utilisé α ∈ {0 ; 0,1 ; 0,5} : la grille n'est pas une recherche aveugle. | [V] rapport | e11_alpha_grid ; e2_safe_cql_diagnostic | Limite 3 du rapport E11. | — |

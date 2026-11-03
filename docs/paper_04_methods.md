@@ -76,3 +76,69 @@ Ces phrases sont écrites avec `CODE:` (lu dans `src/`) ou `DOC:` (lu dans un ra
 
 - Renvois : `sec:results` (n'existe pas encore).
 - Références : `\cite{TODO-bc}`, `\cite{TODO-cql}`, `\cite{TODO-iql}`, `\cite{TODO-double-dqn}`. Le brief demandait aussi une référence « Lagrangian » : elle est déjà dans la section 03 (`TODO-lagrangian-relaxation`) et n'est pas répétée ici.
+
+---
+
+# Révision de l'étape 17 (branche `revision/16-section-methods`)
+
+## Note sur la description des mécanismes
+
+La description des mécanismes d'entraînement (cible de type double DQN, τ = 0,005, sans Q double écrêté ni écrêtage de gradient) corrige celle de la version initiale du manuscrit, pour correspondre au code (OPT-a, CQL-a). Elle figure aussi en commentaire en tête de `04_methods.tex`.
+
+## 1. Résultats BC existants
+
+- **Aucun résultat BC reproduit.** `src/` ne contient pas d'agent BC, et BC n'est ni dans `CONFIGS` ni dans `BASELINES` d'E12 (registre BC-a).
+- **Seuls chiffres BC du dépôt** : ceux du notebook original, cellule 13 : exactitude de test 0,403, du scheduler 0,664, du niveau de PRB 0,576 (`audit_report.md`, ligne 23). La courbe d'apprentissage BC (cellule 13-VIZ) est « calculée sur le cluster de test » (`audit_report.md`, ligne 24). Ce sont des sorties enregistrées, non reproduites.
+- **Comparaison faite en phase 0** (`decision_memo.md`, D4) : ces chiffres tombent dans la plage de classifieurs triviaux ; ce n'est pas une reproduction.
+- **Rien dans `phase2_baselines.md` ni dans les rapports de phase 2 ou 3** (recherche de « BC », « behavior cloning », « imitation » dans `docs/` et `src/`).
+
+## 2. γ dans 03 et 04
+
+Les deux sections contiennent maintenant, mot pour mot, les deux mêmes phrases (test `test_gamma_sentences_identical_in_03_and_04`) :
+1. « The agents of the main comparison are trained with a discount of γ = 0.7 on consecutive windows of an episode and are used as one-step selectors, each window receiving the greedy action of the learned network. » (E12P-b, E12P-d)
+2. « The variant with γ = 0, which matches the one-step objective, is an ablation, and its outcome depends on the set of scripts considered. » (E12-i, E12P-b)
+
+La section 03 dit en plus que *le problème* a un facteur d'actualisation γ = 0.
+
+## 3. r_scale et λ finaux (artefacts d'entraînement)
+
+Lecture par `src/checks/lit_artefacts_entrainement.py` → `docs/e12_artefacts_entrainement.md`. Sources : `results/e12/train_summary.json` (`meta.test_split_read` = false, commit d'entraînement `0fa5787`) et `results/e12/checkpoints/*.pt`. `test_results.json` n'est jamais ouvert (test `test_artefact_reader_never_opens_test_results`).
+
+| valeur | chiffre | d'où il vient |
+|---|---|---|
+| `r_scale` | 4,0758 (4.0757787775968035), identique dans les 30 checkpoints | clé `r_scale` des checkpoints ; écart-type du reward des fenêtres d'entraînement |
+| λ final, `safe_cql_a0.1` (5 seeds) | 0,1028 à 0,1272 | `final_lambda` de `train_summary.json` |
+| λ final, `safe_cql_a0.5` | 0,7497 à 0,9046 | idem |
+| λ final, `safe_cql_a0.1_g0` | 0,4398 à 0,4910 | idem |
+| coût greedy d'entraînement, dernière époque | 0,0294-0,0306 ; 0,0323-0,0329 ; 0,0318-0,0324 | `last_epoch.greedy_cost_train` de `train_summary.json` (table d'entraînement, fenêtres d'entraînement) |
+| λ(époque 79) < λ(époque 99) | vrai dans les 15 runs Safe-CQL | `lambda_history` des checkpoints |
+
+Ces λ (≤ 0,9046) sont très loin des 12,22 du notebook, y compris sur tout le split d'entraînement (E2 n'avait testé qu'un pli).
+
+## 4. Registre
+
+Section 10 du registre : STATE-a, REW-a, REC-a, SCALE-a, SCALE-b, ARCH-a, OPT-a, CQL-a, IQL-a, SAFE-a, SAFE-b, TG-a, BASE-a, BC-a, E12P-a à E12P-d, GRID-a à GRID-c. Les annotations `CODE:` et `DOC:` des deux `.tex` sont remplacées par ces identifiants. La liste 2 de l'étape 16 est donc couverte, sauf : les justifications d'auteur (lignes 10, 13), l'hypothèse sur l'effet de la pénalité (13), et les lignes 23 à 27 (E1, E2).
+
+## 5. `verifie_registre.py`
+
+Avant : 132 OK, 0 ABSENT, 2 AMBIGU (D4-a, COST-a). Après ajout des lignes : voir `docs/verification_registre.md` (régénéré). Deux ABSENT sont apparus et ont été corrigés (un « 17 » de numéro d'étape, et « 15 » / « 12,22 » dans E12P-c, reformulés). Les 2 AMBIGU préexistants sont inchangés.
+
+## 6. Plan BC proposé (non exécuté)
+
+À décider avant tout calcul. Plis A→B et B→A du split d'entraînement uniquement, mêmes plis qu'E1/E2/E11 ; aucun accès au test.
+- **Agent** : classifieur à 8 classes, même architecture (2 × 256), entropie croisée avec poids de classes inverses à la fréquence, Adam 3·10⁻⁴, batch 1 024, 100 époques, seeds 0-4, état de 10 dimensions, z-score appris sur le pli source.
+- **Mesures de validation** : exactitude sur 8 actions, sur le niveau de PRB et sur le scheduler ; reward et coût DM de l'action prédite, avec les tables du pli de validation (comme E11) ; références : classe majoritaire, politique loguée, table-greedy transféré.
+- **Attente écrite avant le calcul** (commit séparé, avec empreinte du code gelé comme E11) : (a) exactitude à 8 actions au-dessus de la classe majoritaire mais sous 50 %, cohérente avec D4-a ; (b) coût de validation de BC proche de celui de la politique loguée, donc au-dessus de d dans les deux sens ; (c) BC ne passe pas le critère « faisable » d'E11 ; (d) les deux sens diffèrent (E11-c) ; (e) tout point faux est rapporté tel quel. Seuils chiffrés à fixer par vous.
+- **Ce que BC ne permettrait pas** : le présenter comme borne inférieure (le coût de BC dépend du script d'entraînement) ni comme résultat sur le test.
+
+## 7. À décider par vous
+
+1. BC : exécuter le plan ci-dessus (étape à part), ou assumer son absence (la section 04 dit déjà qu'aucun résultat BC n'est rapporté).
+2. Seuils chiffrés de l'attente BC (point 6).
+3. Reformulation « γ = 0 » : les chiffres E12 viennent d'un agent entraîné à γ = 0,7. Présenter les deux phrases harmonisées (point 2) telles quelles, ou refaire l'évaluation principale à γ = 0 (troisième lecture du test, NO-blind).
+4. Écart entre les λ d'E12 (≤ 0,9046) et le λ du notebook (12,22) : à expliquer (taille d'entraînement, normalisation) ou à présenter comme non reproduit.
+5. Le statut de convergence des runs E12 au sens d'E2 n'est pas calculé ; le critère E2 (bande [0,9 d ; d]) donnerait un résultat négatif pour α = 0,5 et γ = 0 (coût greedy 0,0318-0,0329 > d). Souhaitez-vous le calculer (lecture de checkpoints d'entraînement uniquement) ?
+6. Références à créer : `TODO-bc`, `TODO-cql`, `TODO-iql`, `TODO-double-dqn`, `TODO-oran-timescales`, `TODO-budget-latency-source`, `TODO-lagrangian-relaxation`, `TODO-dataset`, `TODO-mgen`.
+7. Source de d = 0,03 et de Lmax = 20 ms (NO-source) : non documentée.
+8. Deux AMBIGU préexistants du vérificateur (D4-a : nombres trouvés seulement par conversion %/fraction ; COST-a : aucune source lisible par le script) : à lever ou à accepter.
+9. Renvois pendants : `sec:results`.
