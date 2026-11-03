@@ -21,16 +21,6 @@ The agents of the main comparison are trained with a discount of $\gamma=0.7$ on
 The variant with $\gamma=0$, which matches the one-step objective, is an ablation, and its outcome depends on the set of scripts considered.% REG: E12-i, E12P-b
 We use no gradient clipping, no clipped double-Q learning, and no model selection: the policy is the one of the last epoch, and no convergence is required.% REG: OPT-a, E12P-a
 
-\subsection{Behavior Cloning}
-\label{sec:bc}
-
-Behavior cloning predicts the logged action from the context.% STRUCT
-It is the only baseline of the original manuscript, which is one of the points raised by the reviewers.% REG: R3-W1
-The revised code base contains no behavior-cloning agent, and none enters the final evaluation; we therefore report no behavior-cloning result and do not use it as a lower bound.% REG: R3-W1, BC-a
-The accuracies recorded in the original notebook are recorded outputs and are not reproduced.% REG: NO-notebook
-What the audit measures instead is how well simple classifiers predict the logged action from the context: on the 12-dimensional notebook state the lagged variables alone give 30.5--32.8\% accuracy over the eight actions against a chance level of 12.4\%, and this measurement has not been repeated on the 10-dimensional state.% REG: D4-a, D4-d
-A behavior-cloning agent would therefore partly recover the logged configuration (Sec.~\ref{sec:state})~\cite{TODO-bc}.% REG: D4-a, NO-dyn
-
 \subsection{Conservative Q-Learning}
 \label{sec:cql}
 
@@ -56,6 +46,9 @@ The expectile, $\beta$ and the weight clip are our choices and were not tuned.% 
 \subsection{Table-Greedy: A Baseline Without Reinforcement Learning}
 \label{sec:tablegreedy}
 
+We do not include a behavior cloning baseline: it reproduces the logged action distribution, which carries no information independent of the logging policy (Sec.~\ref{sec:leakage}).% REG: BC-a, D1-c
+On the 12-dimensional state of the original notebook, the lagged variables alone already predict the logged action with 30.5--32.8\% accuracy over the eight actions, against a chance level of 12.4\%, and we have not repeated this measurement on the 10-dimensional state.% REG: D4-a, D4-d
+Instead we compare with training-free references: always-RR, always-PF, the best fixed configuration and table-greedy, described below.% REG: BC-a, R3-W1
 Table-greedy needs no training and uses only the load bin.% REG: TG-a
 For each load bin it selects the action with the highest mean training reward among the actions whose table cost is at most $d$, and the action with the lowest table cost if no action is feasible in the bin.% REG: TG-a
 It is built on the same training tables as the direct-method estimator, so its direct-method value is the most circular of the figures (Sec.~\ref{sec:results}).% REG: E12-f, AU-c

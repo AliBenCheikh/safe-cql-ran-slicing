@@ -142,3 +142,13 @@ Avant : 132 OK, 0 ABSENT, 2 AMBIGU (D4-a, COST-a). Après ajout des lignes : voi
 7. Source de d = 0,03 et de Lmax = 20 ms (NO-source) : non documentée.
 8. Deux AMBIGU préexistants du vérificateur (D4-a : nombres trouvés seulement par conversion %/fraction ; COST-a : aucune source lisible par le script) : à lever ou à accepter.
 9. Renvois pendants : `sec:results`.
+
+---
+
+# Décision sur BC (étape 19, branche `revision/16-section-methods`)
+
+- La sous-section « Behavior Cloning » est retirée de `04_methods.tex` et remplacée, dans la sous-section de table-greedy, par trois phrases : BC n'est pas inclus parce qu'il reproduit la distribution des actions loguées ; la mention de D4 est limitée à l'état à 12 dimensions du notebook (30,5-32,8 % contre 12,4 %, non re-mesuré sur 10 dimensions) ; on compare plutôt à des références sans apprentissage.
+- `\cite{TODO-bc}` et le label `sec:bc` disparaissent ; il n'y a plus de référence BC à créer.
+- Registre : BC-a porte « Décision : non inclus » ; nouvelle ligne NO-bc en §8.6.
+- « Reproduit la distribution des actions loguées, donc aucune information indépendante de la politique de collecte » est un argument d'auteur, pas une ligne [V] du registre (liste 2).
+- Le plan BC sur plis de validation de l'étape 17 n'est plus à exécuter.
