@@ -14,6 +14,7 @@ Flags (thresholds fixed before the read, from the E13b values):
 """
 import argparse
 from multiprocessing import Pool
+from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
@@ -42,7 +43,8 @@ def flags(streams):
             "urllc_empty": bool(sum(np.isfinite(f).sum() == 0 for f in streams["mgen_recv"]) > 0)}
 
 
-def _one(row):
+def _one(rec):
+    row = SimpleNamespace(**rec)
     try:
         s, errs = read_reservation(res_path(row))
         return {"reservation": row.reservation, "cluster": row.cluster, "sched": row.sched, "slicing": row.slicing, **flags(s), "errors": len(errs)}
@@ -60,7 +62,7 @@ def main():
     t = t[t["reservation"].isin(set(usable["reservation"])) & t["cluster"].isin([2, 3])]
     assert len(t) == 510 and (t["split"] == "train").all(), len(t)
     with Pool(a.workers) as p:
-        rows = list(p.imap_unordered(_one, list(t.itertuples()), chunksize=4))
+        rows = list(p.imap_unordered(_one, t.to_dict('records'), chunksize=4))
     pd.DataFrame(rows).sort_values("reservation").to_csv(a.out, index=False)
 
 
