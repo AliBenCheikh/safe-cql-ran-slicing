@@ -108,6 +108,14 @@ Pour chaque affirmation que le papier révisé pourrait faire : l'énoncé préc
 | AU-f | Le λ « converge près de 12,9 » est contredit par la trace enregistrée (λ = 12,22 à l'epoch 99, toujours croissant, coût 0,032 > 0,03). | [V] sortie enregistrée, **non reproduite** | audit §4 | Voir §3 pour les diagnostics par script. | — |
 | AU-g | La référence [15] (outils de test de réseau smart grid) pour MGEN, et la référence « [?] » en Sec. II, n'ont pas été corrigées. | [Q] | audit §6 R3-W3 | Aucun manuscrit révisé n'existe dans ce dépôt. | R3-W3 |
 
+### 1.5 Définitions fixées par le code, plateforme (`src/build_dataset.py`, `src/checks/common.py`, `dataset_notes.md`)
+
+| id | énoncé précis | statut | source | limites | reviewer |
+|---|---|---|---|---|---|
+| WIN-a | La fenêtre canonique est de 5 s : `WINDOW_S = 5.0`, et l'indice de fenêtre est `floor((t − t0) / WINDOW_S)` avec la même formule pour les trois flux (eNB, UE, mgen), `t0` = première ligne eNB avec `nof_ue > 0`. | [V] code | `src/build_dataset.py` (constante `WINDOW_S`, fonction `window_index`, docstring : « Fix 1 (D2) ») | Dit ce que le code fait, pas que 5 s soit adapté (voir E13b-c, E13b-e). | R2-W1 |
+| COST-a | Le coût d'une fenêtre est la part des paquets URLLC de la fenêtre dont la latence `(Received Time − Sent Time) × 1000` dépasse `SLA_MS = 20` ms (`urllc_frac_viol`), calculée sur les paquets gardés (0 ≤ lat < 20 000 ms, voir E13d-a), mis en commun sur les UE URLLC (IMSI 006 à 009) lisibles de la réservation. Le budget est `BUDGET = 0.03`. | [V] code | `src/build_dataset.py` (`_urllc_stream`, `SLA_MS`) ; `src/checks/common.py` (`BUDGET`) | Source de 20 ms et de 0,03 non documentée (voir NO-source). Une fenêtre sans paquet gardé n'a pas de ligne de coût. | R1-W2 |
+| PLAT-a | Plateforme et actions, tels que décrits par le README du dataset : 1 station de base, bande de 10 MHz = 50 PRB, 2 slices ; 8 UE statiques (UE 1-4 eMBB, slice 0 ; UE 5-8 URLLC, slice 1) ; schedulers RR (policy 0) et PF (policy 2) ; trafic jumelé à partir d'un dataset LTE public de 3 stations (Madrid) ; slicings 1 à 5 = 9/41, 21/29, 30/20, 39/11, 50/0 PRB (eMBB/URLLC). Les 8 actions = 4 niveaux de PRB eMBB (9, 21, 30, 39) × {RR, PF}. Entraînement : clusters 2-3 ; test : cluster 1. | [V] lu tel quel dans `dataset_notes.md` (README du dataset ; référence : Bonati et al., ACM WiNTECH 2024) | `dataset_notes.md` | Description du README, non recoupée par un script. Le slicing 5 = 50/0 est le libellé du README ; l'écart avec « `slicing_enabled=0` » (D1-b) n'est pas expliqué. | — |
+
 ---
 
 ## 2. Évaluation E12 par script (lecture finale du test)
@@ -251,7 +259,7 @@ Légende des chiffres : coûts DM suivis de leur IC 95 % bootstrap [bas ; haut].
 
 Pour chacune : ce que le papier ne doit pas dire, pourquoi, et ce qu'on peut dire à la place.
 
-### 8.1 Contrôle séquentiel
+### 8.1 Contrôle séquentiel (id : NO-seq)
 - **À ne pas faire :** « l'agent contrôle le slicing de façon séquentielle », « la politique apprend la dynamique », « Q(s, a) capte l'effet d'une décision sur l'état suivant », « sans violation de la propriété de Markov ».
 - **Pourquoi :**
   - D1 : aucune des 1 116 réservations ne change de config, donc aucune transition avec changement d'action n'existe (D1-a, D1-c).
@@ -261,7 +269,7 @@ Pour chacune : ce que le papier ne doit pas dire, pourquoi, et ce qu'on peut dir
 - **Formulation défendable :** sélection hors ligne de configuration par contexte (option (A) du mémo), évaluée au niveau réservation ; contrôle séquentiel = travail futur.
 - **Reviewers :** R1-W1, R2-W2.
 
-### 8.2 Respect du budget
+### 8.2 Respect du budget (id : NO-budget)
 - **À ne pas faire :** « Safe-CQL respecte le budget d = 0,03 », « le coût se stabilise sur le budget », « λ converge près de 12,9 », « le coût est contraint par construction ». Sources : audit_report (12,9), e2_safe_cql_diagnostic.
 - **Pourquoi :**
   - E12-e : sur c40f2fe7, aucune politique n'est démontrée sûre. La borne haute de l'IC DM de Safe-CQL est 0,0325-0,0344, au-dessus de d.
@@ -272,7 +280,7 @@ Pour chacune : ce que le papier ne doit pas dire, pourquoi, et ce qu'on peut dir
 - **Formulation défendable :** « sur le script de test c40f2fe7, le coût DM de Safe-CQL est de 0,0305-0,0315, plus bas que CQL/IQL (0,055-0,058), avec un intervalle dont la borne haute dépasse 0,03 ; aucune garantie ». Dire que les coûts sont lus dans des tables du train. Sources : e12_rapport_final (E12-a).
 - **Reviewers :** R1-W2, R3-W1.
 
-### 8.3 Supériorité du RL sur une table
+### 8.3 Supériorité du RL sur une table (id : NO-rl)
 - **À ne pas faire :** « le RL fait mieux qu'une table de lookup », « les agents surpassent les baselines », « le RL apporte un gain par rapport à une règle simple ».
 - **Pourquoi :**
   - E12-f : table-greedy a le meilleur reward DM (9,069 contre 6,7-7,1) sur c40f2fe7, avec un coût DM plus bas (0,0217).
@@ -283,7 +291,7 @@ Pour chacune : ce que le papier ne doit pas dire, pourquoi, et ce qu'on peut dir
 - **Formulation défendable :** « Safe-CQL a un coût plus bas que CQL et IQL à reward comparable ; une table construite sur les mêmes cellules fait au moins aussi bien selon l'estimateur DM ».
 - **Reviewers :** R3-W1, R3-W2.
 
-### 8.4 Garantie de sécurité
+### 8.4 Garantie de sécurité (id : NO-safe)
 - **À ne pas faire :** « garantie », « sûr », « safe » au sens de garantie probabiliste, « contrainte satisfaite », « violation SLA contrôlée à tout niveau de charge ».
 - **Pourquoi :**
   - E12-e : critère « démontrée sûre » faux pour les 10 politiques.
@@ -299,7 +307,7 @@ Pour chacune : ce que le papier ne doit pas dire, pourquoi, et ce qu'on peut dir
 - **Formulation défendable :** « réduit le coût estimé » ; « un budget de coût moyen par fenêtre est utilisé comme contrainte d'entraînement » ; ne pas employer « safe » comme propriété démontrée.
 - **Reviewers :** R1-W2.
 
-### 8.5 Validation Near-RT
+### 8.5 Validation Near-RT (id : NO-nearrt)
 - **À ne pas faire :** « xApp Near-RT », « compatible avec les boucles 10 ms - 1 s de l'O-RAN », « validé en Near-RT », « robuste à la taille de fenêtre ».
 - **Pourquoi :**
   - La fenêtre de décision est de 5 s.
@@ -312,21 +320,21 @@ Pour chacune : ce que le papier ne doit pas dire, pourquoi, et ce qu'on peut dir
 
 ### 8.6 Autres affirmations à ne pas faire
 
-| à ne pas dire | pourquoi | source |
-|---|---|---|
-| « Les résultats du notebook sont reproduits. » | Ils ne le sont pas ; le λ = 12,22 n'est pas reproduit (E2, entraînement sur un pli). | audit ; E2-b |
-| « Le scheduler PF cause plus de violations que RR. » (sens causal) | Scheduler et moment d'exécution ne sont pas séparables (PF et RR en blocs disjoints, ≈ 8 j d'écart pour 2 scripts sur 3). Dire plutôt « dans ce dataset, PF est associé à un coût plus élevé dans 12 couples sur 12 ». | D7-b, D8-b, D8-c |
-| « RR reste sûr à toutes les charges (typiquement < 6 %). » | Le notebook montre 0,147 en (30 PRB, RR) à charge basse ; IC [0,005 ; 0,227] au train. | audit §7.3 ; D5-d |
-| « Le nombre de niveaux de charge (3) est optimal ou justifié. » | E13a/E13a2 ne choisissent ni ne classent aucun jeu ; 4-5 niveaux ne sont testés qu'en B→A. | E13a-b ; E13a2-a |
-| « Le filtre de latence n'a pas d'effet sur les résultats. » | Mesuré sur le **train** seulement (840 paquets sur 20,6 M, écart entre borne haute et pipeline ≈ 7·10⁻⁵ sur la moyenne des fenêtres) ; test non lu. | E13d-b, E13d-h |
-| « L'ordre Safe-CQL < CQL < IQL est robuste au filtre. » | Vrai dans l'échantillon (train), pour α = 0,1 ; CQL < IQL ne tient pas à α = 0,5. | E13d-e |
-| « Généralise à un déploiement inconnu / à d'autres scripts. » | Un script de test (90 %), deux de validation, trois en tout avec 8 actions. | D6-b, D6-c, E12-j |
-| « FQE confirme le classement. » | Le FQE du notebook est incorrect (AU-e) ; aucun FQE corrigé dans `src/`. | audit §5 |
-| « α = 0,1 est le meilleur hyperparamètre. » | Retenu par repli ; 0,05 et 0,2 à égalité en pratique ; aucun α faisable. | E11-a, E11-b |
-| « Le test est un jeu indépendant et aveugle. » | Seconde lecture ; phase 2 l'avait déjà lu ; les attentes n'étaient pas aveugles. | E12-k |
-| « Le Q-learning a appris une dynamique qui ne dépend pas de l'action loguée. » | La Q-net reproduit l'action loguée sur 61-82 % (E2-d) ; l'état la devine (D4-a). | D4-a, E2-d |
-| « Source du budget 0,03 et de Lmax = 20 ms : [valeur de référence]. » | Source non documentée dans `dataset_notes.md` (« à compléter »). | E1 limite 5 |
-| « Nouveauté algorithmique. » | Aucun rapport ne soutient une nouveauté ; le papier le dit lui-même. | audit §6 R3-W2 |
+| id | à ne pas dire | pourquoi | source |
+|---|---|---|---|
+| NO-notebook | « Les résultats du notebook sont reproduits. » | Ils ne le sont pas ; le λ = 12,22 n'est pas reproduit (E2, entraînement sur un pli). | audit ; E2-b |
+| NO-pfcause | « Le scheduler PF cause plus de violations que RR. » (sens causal) | Scheduler et moment d'exécution ne sont pas séparables (PF et RR en blocs disjoints, ≈ 8 j d'écart pour 2 scripts sur 3). Dire plutôt « dans ce dataset, PF est associé à un coût plus élevé dans 12 couples sur 12 ». | D7-b, D8-b, D8-c |
+| NO-rr | « RR reste sûr à toutes les charges (typiquement < 6 %). » | Le notebook montre 0,147 en (30 PRB, RR) à charge basse ; IC [0,005 ; 0,227] au train. | audit §7.3 ; D5-d |
+| NO-bins | « Le nombre de niveaux de charge (3) est optimal ou justifié. » | E13a/E13a2 ne choisissent ni ne classent aucun jeu ; 4-5 niveaux ne sont testés qu'en B→A. | E13a-b ; E13a2-a |
+| NO-filter | « Le filtre de latence n'a pas d'effet sur les résultats. » | Mesuré sur le **train** seulement (840 paquets sur 20,6 M, écart entre borne haute et pipeline ≈ 7·10⁻⁵ sur la moyenne des fenêtres) ; test non lu. | E13d-b, E13d-h |
+| NO-order | « L'ordre Safe-CQL < CQL < IQL est robuste au filtre. » | Vrai dans l'échantillon (train), pour α = 0,1 ; CQL < IQL ne tient pas à α = 0,5. | E13d-e |
+| NO-general | « Généralise à un déploiement inconnu / à d'autres scripts. » | Un script de test (90 %), deux de validation, trois en tout avec 8 actions. | D6-b, D6-c, E12-j |
+| NO-fqe | « FQE confirme le classement. » | Le FQE du notebook est incorrect (AU-e) ; aucun FQE corrigé dans `src/`. | audit §5 |
+| NO-alpha | « α = 0,1 est le meilleur hyperparamètre. » | Retenu par repli ; 0,05 et 0,2 à égalité en pratique ; aucun α faisable. | E11-a, E11-b |
+| NO-blind | « Le test est un jeu indépendant et aveugle. » | Seconde lecture ; phase 2 l'avait déjà lu ; les attentes n'étaient pas aveugles. | E12-k |
+| NO-dyn | « Le Q-learning a appris une dynamique qui ne dépend pas de l'action loguée. » | La Q-net reproduit l'action loguée sur 61-82 % (E2-d) ; l'état la devine (D4-a). | D4-a, E2-d |
+| NO-source | « Source du budget 0,03 et de Lmax = 20 ms : [valeur de référence]. » | Source non documentée dans `dataset_notes.md` (« à compléter »). | E1 limite 5 |
+| NO-novelty | « Nouveauté algorithmique. » | Aucun rapport ne soutient une nouveauté ; le papier le dit lui-même. | audit §6 R3-W2 |
 
 ---
 
