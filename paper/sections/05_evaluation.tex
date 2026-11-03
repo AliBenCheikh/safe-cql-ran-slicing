@@ -69,7 +69,7 @@ The first reading was made in an earlier evaluation, with the agents at $\alpha=
 The final reading is therefore the second: the choices, criteria and thresholds were fixed before it, but the expectations were not blind, since several of them restate results of the first reading.% REG: E12-k, NO-blind
 What is new in the second reading is $\alpha=0.1$ for both agents, the ablation $\gamma=0$, the breakdown by script and the intervals by script.% REG: E12-k
 Two aggregates of the test script (the shares of load bins and the number of actions) had also been displayed during an earlier diagnostic, and the descriptive analyses of the scheduler order and of the execution blocks had examined the main test script without tuning anything.% REG: E12-k
-We therefore never use the test to choose a configuration, a hyperparameter or a rule.% REG: E12-k, E11-b
+In this study, $\alpha$ was selected on validation folds, not on the test script, and the other hyperparameters of the evaluated agents were fixed by us and not tuned.% REG: E12-k, E11-b, OPT-a, IQL-a
 The analyses of the latency filter and of the timestamp anomalies cover the training set only, and the effect of the filter on the test set is unknown.% REG: E13d-h, NO-filter
 
 \subsection{Criteria}
@@ -77,7 +77,7 @@ The analyses of the latency filter and of the timestamp anomalies cover the trai
 
 \paragraph{Demonstrated safe.}
 A policy is ``demonstrated safe'' on a group if the upper bound of the 95\% interval of its cost is at most $d=0.03$ for \emph{both} the DM and the matched estimator; an undefined value counts as not demonstrated.% REG: CRIT-a
-The term describes this criterion and nothing more: it is not a guarantee, and its failure does not show that a policy is unsafe, since the matched intervals are wide and the evaluation lacks power.% REG: CRIT-a, E12-e, NO-safe
+The term describes this criterion and nothing more: it is not a guarantee, and its failure does not show that a policy is unsafe, since the upper bound of every matched interval exceeds $d=0.03$ (E12-e), so no policy is demonstrated safe.% REG: CRIT-a, E12-e, NO-safe
 
 \paragraph{Convergence of $\lambda$.}
 The convergence criterion of the first diagnostic of Sec.~\ref{sec:lambda_diag} was fixed before the runs and is evaluated on the last 20 epochs.% REG: CONV-a
