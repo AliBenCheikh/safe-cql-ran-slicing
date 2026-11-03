@@ -1,0 +1,134 @@
+% Section 2 -- Data and audit (IEEEtran)
+% Source of every claim: docs/registre_affirmations.md ([V] stated as fact, [H] stated as hypothesis, [Q] omitted).
+% Each numeric sentence is followed by a "% REG:" comment giving the registry row(s).
+\section{Data and Audit}
+\label{sec:data_audit}
+
+This section describes the logged dataset, the audit we performed before any learning experiment, and what the audit implies for the claims the paper can make.
+All numbers below are taken from the audit reports of our repository; outputs recorded in the original notebook are not reused as results.% REG: AU-f, AU-e (notebook outputs not reproduced)
+
+\subsection{Dataset and Canonical Pipeline}
+\label{sec:data_pipeline}
+
+The dataset consists of logged \emph{reservations}, each a run of the testbed under one configuration (PRB allocation, scheduler, slicing, power) with scripted MGEN traffic~\cite{TODO-dataset,TODO-mgen}.
+It contains 1\,116 reservations.% REG: D1-a
+The action space has eight actions; slicing configuration~5 is excluded because it corresponds to no slicing (309 reservations with \texttt{slicing\_enabled}$=0$ and \texttt{slice\_prb}$=0$).% REG: D1-b
+The canonical pipeline yields 706 usable reservations, as the original notebook does, but 224\,193 rows instead of 225\,313 ($-1\,120$ rows, 0.5\%).% REG: D2-c
+The training set has 162\,490 transitions in the canonical pipeline; the figure of $2.25\times10^{5}$ training transitions given in the original manuscript includes the test set and is incorrect.% REG: AU-d
+Windows are 5\,s long, which is the only window length we evaluate (Sec.~\ref{sec:sampling}).% REG: E13b-e, 8.5
+In 46 of the 706 usable reservations (6.5\%), windows are missing (103 events); we treat each contiguous stretch as a separate episode, which gives 817 episodes.% REG: D3-a
+We hypothesize that the gaps come from windows without any URLLC packet; we have not verified this.% REG: D3-a (limite, [H])
+
+The cost is the fraction of URLLC packets whose latency exceeds 20\,ms in a window, and the budget is $d=0.03$.% REG: E13d-a, E1-a
+We do not document a source for the value $d=0.03$ or for the 20\,ms threshold~\cite{TODO-budget-latency-source}.% REG: 8.6 (source du budget et de Lmax non documentée)
+
+\subsection{The Configuration Is Constant Within a Reservation}
+\label{sec:config_constant}
+
+The configuration changes in none of the 1\,116 reservations (0/1\,116), and the content of the configuration files agrees with the file path in every case.% REG: D1-a
+Load varies within a reservation, but through a scripted, exogenous MGEN schedule (a change every 60\,s).% REG: D1-a
+Hence the dataset contains no transition in which the action changes, and the value $Q(s,a)$ for an action $a$ other than the logged one is identified only by differences \emph{between} reservations.% REG: D1-c
+Consequently the dataset cannot identify sequential control, and we do not claim that the agent controls slicing sequentially or learns the dynamics of the system.% REG: D1-c, 8.1
+We formulate the task as offline selection of a configuration given a context, evaluated at the reservation level; sequential control is left as future work.% REG: 8.1 (formulation défendable)
+
+\subsection{The State Reveals the Logged Action}
+\label{sec:leakage}
+
+On the 12-dimensional state of the original notebook, the lagged variables alone predict the logged action with 30.5--32.8\% accuracy over the eight actions (chance level 12.4\%), and the PRB level with 55.5--55.6\% (chance level 24.5\%).% REG: D4-a
+With all 12 variables the accuracy is 35.6--42.3\% for the eight actions and 58.9--61.1\% for the PRB level.% REG: D4-a
+The reservation-level bootstrap interval for the lag-only accuracy is $[0.25;0.38]$.% REG: D4-a
+On the 10-dimensional state of our pipeline, current radio and load predict the scheduler with 71\% accuracy using a boosted model (55\% with a linear model).% REG: D4-b
+The notebook also placed the current-window eMBB reward and \texttt{urllc\_p50} in the state; our pipeline removes these two current columns and keeps only their lags.% REG: AU-a
+Removing them does not remove the dependence of the state on the logged action.% REG: AU-a (limite), D4-a
+We hypothesize that adding $a_{t-1}$ to the state would add little, since the action is constant within a reservation and is therefore already predictable; this is an argument, not an experimental result.% REG: D4-c
+
+\subsection{Clocks, Windows and Traffic Scripts}
+\label{sec:clocks}
+
+The eNB, UE and MGEN logs share a UTC time base, with a typical offset below 1\,s (median 0.49\,s between the first UE row and the first eNB row), and 12 of 1\,096 reservations with an offset above 5\,s.% REG: D2-a
+The absolute clock of the UE logs is not recorded; we estimate it, so the UE alignment is an assumption that we have not validated independently (estimated median offset 0.51\,s, 5th percentile $-1.7$\,s, 95th percentile $+3.8$\,s, 124 files beyond $\pm5$\,s).% REG: D2-a, D2-b
+The original notebook summed eMBB windows shifted per UE: the first BS rows of the UEs differ by more than 5\,s in 532 of 1\,101 reservations (48\%).% REG: D2-b
+Our pipeline imposes a common origin $t_0$.% REG: D2-b
+That origin is already aligned with the script time to about 1\,s (window start at 0, first ON period at 70\,s); realigning it changes the difference between actions by a median absolute 0.001\,Mbps (0.000 on the cost), on the 621 reservations whose origin was accepted (85 rejected).% REG: D6-e
+This check relies on alignment assumptions that remain unverified.% REG: D6-e (limite, [H])
+
+The dataset contains 19 distinct traffic scripts, none shared between clusters and therefore none between training and test.% REG: D6-a
+Only three scripts cover all eight actions with usable reservations.% REG: D6-c
+All 3\,705 \texttt{ON} lines of the 19 scripts are \texttt{UDP}~\ldots~\texttt{PERIODIC}, so the emitted traffic is open loop.% REG: D6-f
+We hypothesize that the emitted rate is identical across reservations; we have not verified it.% REG: D6-f ([H])
+In fact, the number of active UEs and the received URLLC throughput depend on the action across the eight actions ($p\le0.014$; $\eta^2$ of 0.11--0.18 and 0.30--0.57).% REG: D7-c
+We detect no such dependence at fixed scheduler ($p$ between 0.10 and 0.96), but the power of that test is low, so we do not conclude that load is exogenous to the action.% REG: D7-c
+
+\subsection{Effective Sample Size: Scripts, Not Reservations}
+\label{sec:scripts}
+
+The test set is in practice a single script: script c40f2fe7 accounts for 177 of the 196 usable test reservations (90\%).% REG: D6-b
+Training rests on two scripts, which account for 478 of 510 reservations (94\%).% REG: D6-b
+We hypothesize that the independent unit for generalization is the script rather than the reservation; this hypothesis is strongly supported by this structure but not tested.% REG: D6-b ([H])
+The noise between repetitions of one script is of the same order as the budget: the standard deviation of the mean cost per reservation ranges from 0.002 to 0.22 for means between 0.002 and 0.23.% REG: D6-d
+We therefore make no claim of generalization to other scripts or to an unseen deployment.% REG: D6-b, D6-c, 8.6
+
+\subsection{Scheduler and Execution Time Are Confounded}
+\label{sec:confound}
+
+With slicing fixed, the PF--RR difference in cost is positive in all 12 (script, slicing) pairs, from $+0.04$ to $+0.20$ (1.4 to 6.7 times the budget).% REG: D7-a
+On the reward, the sign varies (negative in 9 of the 12 pairs) and no difference is distinguishable from zero.% REG: D7-a
+In these 12 pairs, PF and RR occupy disjoint blocks of reservation identifiers, with a single switch.% REG: D7-b
+Identifier order is chronological (Spearman 1.000, 5 inversions of at most 17\,min), and none of the 17 (script, slicing) pairs has interleaved PF and RR runs.% REG: D8-a, D8-b
+For two scripts the PF and RR blocks are about 8 days apart; for the test script c40f2fe7 they are about 13\,h apart.% REG: D8-b
+The best single cut point of the cost falls exactly at the PF-to-RR switch for the three scripts, with no significant cut within a block.% REG: D8-d
+On the closest PF/RR pairs the cost difference keeps its sign (12/12, 12/12 and 8/8 cells at 100, 50 and 25\% of the pairs), but for two scripts out of three even the closest pairs are 8--9 days apart.% REG: D8-c
+This control therefore does not remove the confound.% REG: D8-c (limite)
+We state the result as an association: in this dataset, PF is associated with a higher cost in 12 of 12 pairs; we do not claim that PF causes more violations than RR.% REG: D7-a, D7-b, 8.6
+
+\subsection{Load Levels and Cost Cells}
+\label{sec:cells}
+
+The cost table is indexed by action and load level.
+The canonical pipeline uses a single cost table with three load bins, with edges $[0;3.5;5.5;8.1]$; the original notebook used three different cost tables, and its ``tabular OPE'' used four bins.% REG: AU-b
+The tabular estimates of the original notebook are fitted on the training data and are therefore not an out-of-sample evaluation.% REG: AU-c
+The cells are well supplied with windows but poor in reservations: reservation-level confidence intervals are 6 to 9 times wider than the naive per-window ones (median width 0.044--0.059 against 0.006--0.010).% REG: D5-a
+Between 47\% and 63\% of the cells have a confidence interval containing the budget 0.03 (15/24 at three bins in training, 18/32 at four bins).% REG: D5-b
+Load is almost a reservation-level covariate and is partly confounded with the action and the cluster (mean number of UEs 4.58, 5.80 and 5.34 for clusters 1, 2 and 3).% REG: D5-c
+The number of UEs is an integer in 98.3\% and 98.0\% of the windows of the two training scripts, so quantile edges collapse: in one script, the 20--80\% quantiles all equal 6.0.% REG: E13a-a, E13a-b
+With integer edges, the transferred cost varies with the edge set from 0.0448 to 0.0520 in one direction and from 0.0303 to 0.0357 in the other, and the bootstrap interval contains $d$ in every one of the 12 rows.% REG: E13a2-b, E13a2-c
+Two two-level partitions give very different transferred costs (0.0256 for edge 6.0, 0.0463 for edge 5.0).% REG: E13a2-d
+We therefore select no number of load levels as optimal or justified; the three-level configuration is the one fixed in advance.% REG: E13a2-c, 8.6, E13-statut
+
+\subsection{Sampling Resolution and Decision Window}
+\label{sec:sampling}
+
+On the 12 training reservations we examined (timestamp columns only), the real sampling step of the KPM streams is 0.25\,s (4\,Hz): 12/12 \texttt{enb\_metrics} files and 96/96 \texttt{ue\_metrics} files.% REG: E13b-a
+A 5\,s window thus contains about 20 samples; we do not know whether these 12 reservations are representative.% REG: E13b-a (limite, [H])
+For the reward, radio and number of UEs, windows of 1, 2 and 2.5\,s contain at least three samples in at least 99\% of the windows, whereas 0.5\,s and below do not.% REG: E13b-b
+For the URLLC cost, with 10 packets per second per UE and 2 to 3 active UEs, the criterion of at least 34 packets in 99\% of the windows is met at 5\,s for 7 of 12 reservations, at 2.5\,s for 4/12, at 2\,s for 3/12, and at 1\,s or below for 0/12.% REG: E13b-c
+The threshold of 34 packets is our choice (one violation out of 34 is below $d$).% REG: E13b-c (limite)
+The Near-RT range (10\,ms to 1\,s)~\cite{TODO-oran-timescales} is not reachable with these files for either signal.% REG: E13b-d
+We report this as a measured data limit, not as an answer to the Near-RT question; our decision window is 5\,s, we run no window-sensitivity experiment, and we make no Near-RT or robustness-to-window claim.% REG: E13b-d, E13b-e, 8.5
+We hypothesize that the estimated UE clock alignment also limits windows finer than a few seconds; we did not re-measure it for this purpose.% REG: E13b-f ([H])
+
+\subsection{Latency Filter and URLLC Cost}
+\label{sec:latency}
+
+The pipeline keeps packets with $0\le\text{latency}<20\,000$\,ms and computes the violation indicator (latency above 20\,ms) on the kept packets only; discarded packets enter neither the numerator nor the denominator.% REG: E13d-a
+Of the 20\,619\,886 training packets read, 840 are discarded (latency $\ge 20\,000$\,ms), with no negative or non-finite latency.% REG: E13d-b
+In total, 448 of 510 training reservations have at least one discarded packet (at most 4 per reservation) and 62 have none.% REG: E13d-b
+The mean window cost on the training set is 0.056338 for the pipeline, 0.056332 if discarded packets are counted as non-violations and 0.056411 if they are counted as violations.% REG: E13d-c
+The maximum change of a cost-table cell is $6.0\times10^{-5}$ (lower bound) and $2.85\times10^{-4}$ (upper bound).% REG: E13d-c
+Reservations with a cost at most $d$ number 351 of 510 for the pipeline and for the upper bound; 159 of 510 exceed $d$ under the lower bound.% REG: E13d-d
+The order Safe-CQL $<$ CQL $<$ IQL at $\alpha=0.1$ is identical under the pipeline cost and under each bound, over the whole training set and for each script, within the sample (tables and policies on the same windows).% REG: E13d-e
+At $\alpha=0.5$, Safe-CQL stays below CQL and IQL, but CQL and IQL are indistinguishable.% REG: E13d-e
+This analysis covers the training set only; the effect of the filter on the test set is unknown.% REG: E13d-h, 8.6
+We do not claim that the filter has no effect on the results.% REG: 8.6
+Separately, some \texttt{mgen} URLLC files are empty: at least one of the four URLLC files is empty in 353 of 510 reservations, and those UEs do not enter the cost at all.% REG: E13d-f
+For windowing, the pipeline uses \texttt{Received Time}, because \texttt{Sent Time} shows jumps of up to 31\,507\,s on the pooled packets of the 12 examined reservations (against 2.34\,s for \texttt{Received Time}); 423 of 510 reservations have a jump above 3\,600\,s on \texttt{Sent Time} against 8 of 510 on \texttt{Received Time}.% REG: E13b-g
+We hypothesize that the 840 discarded packets are the rows with aberrant \texttt{Sent Time}; the rows were not matched.% REG: E13d-g ([H])
+
+\subsection{Consequences for the Claims of the Paper}
+\label{sec:consequences}
+
+The audit supports three limits on the paper.
+First, the data identify an offline choice of configuration per context, not sequential control (Sec.~\ref{sec:config_constant}, \ref{sec:leakage}).% REG: D1-c, 8.1
+Second, the effective sample is a handful of scripts (Sec.~\ref{sec:scripts}), and the scheduler effect cannot be separated from execution time (Sec.~\ref{sec:confound}).% REG: D6-b, D7-b
+Third, the cost is defined on 5\,s windows with a latency threshold and a budget whose source we do not document, and the cost cells are noisy at the reservation level (Sec.~\ref{sec:cells}, \ref{sec:sampling}).% REG: D5-a, E13b-e, 8.6
+For these reasons we describe the training constraint as a cost budget used during training, and we do not present any property of the learned policies as a safety guarantee.% REG: 8.4 (formulation défendable)
