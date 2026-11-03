@@ -58,3 +58,11 @@ Entraînement : tout le train (clusters 2–3), seeds 0–4, 100 epochs, politiq
 - **(f)** Tout point faux sera rapporté tel quel, sans réécriture de l'attente ni du critère.
 
 Les seuils (10 %, 50 %, 2 écarts-types) sont arbitraires ; ils sont fixés ici et dans le code avant le gel.
+
+---
+
+# Addendum du 2026-11-03, avant `--evaluate` — analyses D6, D7, D8 sur le script `c40f2fe7`
+
+D6, D7 et D8 ont examiné des résultats du script test `c40f2fe7` (effet PF contre RR, blocs d'exécution, coûts par réservation). Ces analyses étaient descriptives et n'ont servi à régler aucun paramètre.
+
+Cet addendum s'ajoute aux sections précédentes, qui ne sont pas modifiées. Il complète la section « Transparence » : le script principal `c40f2fe7` a donc été examiné, avant cette lecture finale, par ces trois analyses en plus des lectures déjà consignées.
