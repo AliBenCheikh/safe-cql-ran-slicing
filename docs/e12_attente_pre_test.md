@@ -1,7 +1,7 @@
 # E12 — Attente consignée AVANT toute lecture du test
 
 Date d'écriture : 2026-11-03 (13:56 +01:00). Branche `revision/12-test-final`, partie de `revision/11-alpha-grid` (commit `ecb624d`).
-Ce document est écrit et commité **avant** que le split test (cluster 1, script `c40f2fe7` + autres) soit lu pour l'étape 12. Il n'est modifié par aucun commit ultérieur ; toute correction passe par un nouveau document daté.
+Ce document est écrit et commité **avant** que le split test (cluster 1, script `c40f2fe7` + autres) soit lu pour l'étape 12. Document en ajout seulement : les sections ultérieures sont datées, le texte déjà commité n'est pas réécrit (l'historique git fait foi).
 
 ## Attente (formulée par l'auteur du projet, reprise telle quelle)
 
@@ -21,3 +21,40 @@ Lors d'E1 (voir `docs/e1_lp_diagnostic.md`, note de transparence), une commande 
 2. le **nombre d'actions**.
 
 Ces valeurs n'ont servi ni au code, ni à un rapport, ni à un choix (configuration, hyperparamètre, règle). La règle « le test n'est lu qu'une fois, à la fin » est donc entamée pour ces deux agrégats seulement. Rien d'autre du split test n'a été lu à ma connaissance de cette session.
+
+---
+
+# Addendum du 2026-11-03 (14:00 +01:00), avant le gel — correction, configurations, attentes
+
+## 1. Correction : ceci est une lecture finale, la SECONDE lecture du test
+
+La section « Transparence » ci-dessus est **incomplète** : elle ne mentionne que les deux agrégats vus en E1. Le split test a déjà été lu en **phase 2** (`src/evaluate.py`, Safe-CQL/CQL α = 0,5, γ = 0,7, IQL, baselines), et ses résultats sont connus de l'auteur et de l'assistant. L'étape 12 n'est donc **pas** une lecture unique ni aveugle ; c'est la **lecture finale (seconde lecture)**. Conséquences :
+- le test ne peut pas servir à choisir quoi que ce soit : tout est fixé avant (commit de gel) ;
+- les attentes ci-dessous ne sont **pas aveugles** : (a) à (e) reprennent des résultats de phase 2 ;
+- la nouveauté réelle de cette lecture est : α = 0,1, CQL α = 0,1, l'ablation γ = 0, la ventilation par script, et les intervalles par script.
+
+## 2. Configurations figées d'avance
+
+| nom | agent | α | γ | rôle |
+|---|---|---|---|---|
+| `safe_cql_a0.1` | Safe-CQL | 0,1 | 0,7 | **principal** (α par le repli d'E11 ; quasi-ex æquo avec α = 0,05 et 0,2 : coût de validation moyen 0,03440 / 0,03470 / 0,03464) |
+| `cql_a0.1` | CQL | 0,1 | 0,7 | comparaison à α égal |
+| `safe_cql_a0.5` | Safe-CQL | 0,5 | 0,7 | continuité avec la phase 2 |
+| `cql_a0.5` | CQL | 0,5 | 0,7 | continuité avec la phase 2 |
+| `safe_cql_a0.1_g0` | Safe-CQL | 0,1 | **0** | ablation γ |
+| `iql` | IQL | – | 0,7 | tel quel (`IQL_CFG`) |
+
+Baselines : always-RR, always-PF, best-fixed, table-greedy (définitions de `src/baselines.py`, inchangées).
+Entraînement : tout le train (clusters 2–3), seeds 0–4, 100 epochs, politique = dernière epoch (pas de choix de checkpoint). Aucune convergence n'est exigée (0/60 en E2 et E11) ; ce point sera dit dans le rapport. Tables DM : reward/coût du train. Bootstrap : B = 2000, seed 0, par réservation à l'intérieur de chaque script.
+
+## 3. Attentes consignées (non aveugles)
+
+Évaluées mécaniquement par `check_expectations` (gelée), sur `c40f2fe7` et, pour continuité, sur l'ensemble du test.
+- **(a)** Reward DM : table-greedy au-dessus de tous les agents ; Safe-CQL, CQL et IQL proches (écart max ≤ 10 % de leur moyenne).
+- **(b)** Coût DM : Safe-CQL plus bas que CQL et IQL (aux deux α), mais avec un intervalle à 95 % dont la borne haute reste ≥ d.
+- **(c)** Matched : même ordre des coûts ; couverture partielle (< 50 % pour tous les agents).
+- **(d)** γ = 0 sans amélioration nette (« nette » := coût DM plus bas de plus de 2 écarts-types entre seeds, ou reward plus haut de plus de 2 écarts-types à coût non supérieur).
+- **(e)** Aucune politique démontrée sûre sur `c40f2fe7` (« démontrée sûre » := borne haute de l'IC 95 % ≤ d à la fois en DM et en matched).
+- **(f)** Tout point faux sera rapporté tel quel, sans réécriture de l'attente ni du critère.
+
+Les seuils (10 %, 50 %, 2 écarts-types) sont arbitraires ; ils sont fixés ici et dans le code avant le gel.
