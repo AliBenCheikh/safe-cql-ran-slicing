@@ -72,3 +72,13 @@ def test_no_claim_about_original_notebook_fqe():
     prose = _prose()
     assert not re.search(r"original notebook|incorrect|corrected version", prose)
     assert "No Fitted Q Evaluation and no importance-weighted estimator is used." in prose
+
+
+def test_no_behavior_cloning_in_evaluation_and_refs_resolve():
+    """BC est non inclus (BC-a) ; la section 05 ne le mentionne pas et ses renvois à la section 04 existent."""
+    prose = _prose()
+    assert not re.search(r"\bBC\b|[Bb]ehaviou?r(al)? [Cc]loning", prose)
+    labels = "\n".join(p.read_text(encoding="utf-8") for p in (ROOT / "paper" / "sections").glob("*.tex"))
+    for ref in re.findall(r"\\ref\{([^}]+)\}", prose):
+        assert f"\\label{{{ref}}}" in labels, ref
+    assert "Sec.~\\ref{sec:methods}" in prose
