@@ -21,7 +21,7 @@ Tags : **[V]** vérifié sur les fichiers lus · **[H]** hypothèse non vérifi�
 
 - **[V]** Le pas réel des flux KPM est **0,25 s, non 1 s** : une fenêtre de 5 s contient ~20 échantillons de `nof_ue` et de radio.
 - **[V]** Fenêtres plus fines que 5 s possibles **pour le reward, la radio et `nof_ue`** : 1 s, 2 s et 2,5 s (≥ 3 échantillons). 0,5 s (2 échantillons), 0,25 s (1 échantillon) et 0,1 s ne satisfont pas le critère.
-- **[V]** Pour le **coût URLLC**, le débit de paquets (~30/s au plus, pooled) rend les fenêtres < 5 s trop pauvres : la médiane est de 50 à 150 paquets par fenêtre de 5 s (150 pour 5 réservations sur 12, 100 pour 3, et 142, 98, 84, 50 pour les autres). Avec ≤ 30 paquets par seconde, une fraction de violations de 0,03 n'est pas résoluble à 1 s.
+- **[V]** Pour le **coût URLLC**, le débit de paquets (~30/s au plus, pooled) rend les fenêtres < 5 s trop pauvres : la médiane est de 50 à 150 paquets par fenêtre de 5 s (150 pour 5 réservations sur 12, 100 pour 2, et 144, 142, 98, 84, 50 pour les autres). Avec ≤ 30 paquets par seconde, une fraction de violations de 0,03 n'est pas résoluble à 1 s.
 - **[P]** Même à 5 s, 5 réservations sur 12 n'atteignent pas 99 % de fenêtres à ≥ 34 paquets (la part va de 0,979 à 0,989 pour elles) : la granularité du coût dans la fenêtre gelée est déjà grossière pour ces réservations (résolution 1/50 pour la plus pauvre). Je n'en tire aucune conséquence sur les résultats déjà produits.
 
 ## Ce que cela implique pour R2-W1 (descriptif)
