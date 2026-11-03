@@ -1,0 +1,110 @@
+% Section 5 -- Evaluation protocol (IEEEtran)
+% Source of every claim: docs/registre_affirmations.md ([V] stated as fact, [H] stated as hypothesis, [Q] omitted).
+% Each factual or numeric sentence is followed by a "% REG:" comment giving the registry row(s).
+\section{Evaluation Protocol}
+\label{sec:protocol}
+
+This section describes how the agents and baselines of Sec.~\ref{sec:methods} are evaluated on the test cluster, how the evaluation was fixed before the test was read, and what it does not allow us to conclude.% STRUCT
+The problem and its assumptions are in Sec.~\ref{sec:formulation}, and the data limits are in Sec.~\ref{sec:data_audit}.% STRUCT
+
+\subsection{Two Estimators}
+\label{sec:estimators}
+
+An offline policy cannot be run on the system, and the configuration is constant within every logged reservation, so no estimator observes a change of action.% REG: D1-a, D1-c
+Both estimators below are therefore proxies for an online evaluation and not substitutes for one.% REG: D1-c, NO-seq
+
+\paragraph{Direct method (DM).}
+For each window of the test set, the DM estimator reads in the training tables the mean reward and the table cost of the action chosen by the policy, in the load bin of the window; a missing cell of the reward table is replaced by the mean of the action.% REG: EST-a
+It does not measure the system, and it assumes that the training tables transfer across scripts.% REG: EST-a
+That transfer was checked in one direction only, where the constraint respected on the tables of one script was violated on the other (a cost of 0.052 against 0.030), and was respected to within 1\% in the other direction.% REG: TR-a, TR-d
+The estimate is partly circular for table-greedy and for the cost of Safe-CQL, because the table that is read is the one that was used to build the method.% REG: EST-a, AU-c, E12-f
+
+\paragraph{Matched estimator.}
+The matched estimator averages the reward and the cost \emph{observed} on the windows where the chosen action equals the logged one, and its coverage is the share of such windows.% REG: EST-b
+It does not read the tables.% REG: EST-b
+It says nothing about actions that were never logged, it is undefined if no window matches, and the matched subset depends on the policy.% REG: EST-b, E12-c
+It is also confounded with the execution block: in the test script, PF ran before RR.% REG: EST-b, D8-b
+
+\paragraph{Why both.}
+The DM estimator covers every window but depends on the tables; the matched estimator depends on observed values but covers only part of the windows.% REG: EST-a, EST-b
+We use both and look for agreement of their ordering, and we do not average them.% REG: EST-a, EST-b
+The headline comparison is the ordering of the means; it is not a separation by intervals, since the matched intervals overlap widely.% REG: E12-c
+Both estimators are computed per reservation as ratios of sums, so that every window weighs equally within a resampled sample.% REG: EST-c
+We do not use importance-weighted estimators or Fitted Q Evaluation: the Fitted Q Evaluation of the original notebook is incorrect, and no corrected version exists in our code.% REG: AU-e, NO-fqe
+
+\subsection{Intervals and the Script as the Unit}
+\label{sec:intervals}
+
+The intervals are bootstrap intervals over reservations, with $B=2\,000$ resamples and seed 0, drawn with replacement inside each script; the training tables and the trained models are held fixed.% REG: BOOT-a
+For an agent, the interval is on the value averaged over the five seeds, and the standard deviation across seeds is reported separately, together with the share of resamples where the value is undefined.% REG: BOOT-a
+The intervals are labelled ``conditional on this script'': they measure the dispersion of reservations inside a script, not the variability between scripts.% REG: BOOT-a
+The reservations of one script are not independent, and we hypothesize that the independent unit for generalization is the script; this hypothesis is strongly supported by the structure of the data but not tested.% REG: D6-b
+The noise between repetitions of one script is of the same order as the budget.% REG: D6-d
+
+Each reservation is attached to its traffic script by the first eight hexadecimal characters of the md5 of the script.% REG: GRP-a
+We report every test script separately, ordered by size, and the whole test set (``pooled''); a script with fewer than ten test reservations is flagged as low-$n$, and its intervals are not interpreted.% REG: GRP-a, E12-j
+The test cluster is in practice a single script, which holds 177 of the 196 usable reservations (90\%), so the pooled value is about 90\% one script and is not a result over several scripts.% REG: D6-b, E12-b
+
+\subsection{Pre-Registration and Frozen Code}
+\label{sec:prereg}
+
+Before the final reading, we wrote our expectations in a document committed before the code was run, and froze the configurations, the criteria and the thresholds.% REG: E12-k, PREREG-a
+The expectations (a) to (e) are checked mechanically by a frozen function, with thresholds fixed in advance: agents are ``close'' if the largest difference of DM reward is at most 10\% of their mean, the matched coverage is ``partial'' if it is below 50\% for every agent, and an improvement is ``net'' if the DM cost is lower by more than two standard deviations across seeds.% REG: PREREG-a
+These thresholds are arbitrary.% REG: PREREG-a, E12-i
+Any expectation that turns out to be false is reported as it is, without rewriting the expectation or the criterion.% REG: E12-k
+
+The code that reads the test refuses to run unless the following hold.% REG: FREEZE-a
+The files of the source, of the tests and of the expectation document have no uncommitted change.% REG: FREEZE-a
+The sha256 fingerprint of the constants and of the source of the frozen functions equals the one recorded at the freeze commit.% REG: FREEZE-a
+The expectation document is committed, and the training was done under the same fingerprint.% REG: FREEZE-a
+A lock file created with the \texttt{O\_EXCL} flag prevents a second reading; a rerun is allowed only if the status is \texttt{started} and no result file exists, that is, after a crash before anything was written or shown.% REG: FREEZE-a
+The results are written atomically before anything is printed.% REG: FREEZE-a
+This freeze guards against changes made after the fact; it does not make the reading blind (next subsection).% REG: FREEZE-a, NO-blind
+
+\subsection{Status of the Test Readings}
+\label{sec:readings}
+
+The test cluster was read twice, and neither reading is an independent, blind test.% REG: E12-k, NO-blind
+The first reading was made in an earlier evaluation, with the agents at $\alpha=0.5$, IQL and the baselines, and its results were known to us.% REG: E12-k
+The final reading is therefore the second: the choices, criteria and thresholds were fixed before it, but the expectations were not blind, since several of them restate results of the first reading.% REG: E12-k, NO-blind
+What is new in the second reading is $\alpha=0.1$ for both agents, the ablation $\gamma=0$, the breakdown by script and the intervals by script.% REG: E12-k
+Two aggregates of the test script (the shares of load bins and the number of actions) had also been displayed during an earlier diagnostic, and the descriptive analyses of the scheduler order and of the execution blocks had examined the main test script without tuning anything.% REG: E12-k
+We therefore never use the test to choose a configuration, a hyperparameter or a rule.% REG: E12-k, E11-b
+The analyses of the latency filter and of the timestamp anomalies cover the training set only, and the effect of the filter on the test set is unknown.% REG: E13d-h, NO-filter
+
+\subsection{Criteria}
+\label{sec:criteria}
+
+\paragraph{Demonstrated safe.}
+A policy is ``demonstrated safe'' on a group if the upper bound of the 95\% interval of its cost is at most $d=0.03$ for \emph{both} the DM and the matched estimator; an undefined value counts as not demonstrated.% REG: CRIT-a
+The term describes this criterion and nothing more: it is not a guarantee, and its failure does not show that a policy is unsafe, since the matched intervals are wide and the evaluation lacks power.% REG: CRIT-a, E12-e, NO-safe
+
+\paragraph{Convergence of $\lambda$.}
+The convergence criterion of the first diagnostic of Sec.~\ref{sec:lambda_diag} was fixed before the runs and is evaluated on the last 20 epochs.% REG: CONV-a
+It requires that the spread of $\lambda$ be below 0.02; that either $\lambda>0$ and the greedy cost stay in the band $[0.9\,d;\,d]$, or $\lambda=0$ and the cost be at most $d$; and that the 95\% interval of the slope of $\lambda$ over the epochs contain 0.% REG: CONV-a
+The greedy cost is read in the training table on the training windows of the fold, so it is an in-sample quantity.% REG: CONV-a
+The revised criterion of Sec.~\ref{sec:alpha} is descriptive: its tolerance was calibrated on runs already observed.% REG: E11-d
+We have not applied the criterion to the runs of the final evaluation, whose training was done for a fixed number of epochs and read at the last epoch.% REG: CONV-a, E12P-a, E12P-c
+
+\subsection{Validation Folds}
+\label{sec:folds}
+
+The choice of $\alpha$ and the diagnostics of $\lambda$ use a validation by script on the training split only.% REG: FOLD-a, GRID-a
+In the direction ``A$\to$B'' a network is trained on the first script and validated on the second, using the windows of the second as states, its tables for cost and reward, and the standardization learned on the first; ``B$\to$A'' is the converse.% REG: FOLD-a
+The test split is not read for these folds.% REG: FOLD-a, E11-a
+The validation tables are fitted on the validation fold itself, and only two scripts are available.% REG: FOLD-a, D6-b
+The two directions can move in opposite ways, so that averaging them hides a disagreement (Sec.~\ref{sec:alpha}).% REG: E11-c
+
+\subsection{What This Evaluation Does Not Allow}
+\label{sec:limits_eval}
+
+The evaluation supports comparisons of estimated costs and rewards of one-step selectors on the test script; it does not support the following claims.% STRUCT
+\begin{itemize}
+  \item \emph{No sequential control.} The data contain no action change, and the estimators do not observe one.% REG: D1-c, NO-seq
+  \item \emph{No Near-RT validation.} The decision window is 5\,s, no window-sensitivity experiment was run, and the files do not allow the 10\,ms--1\,s range.% REG: WIN-a, E13b-d, E13b-e, NO-nearrt
+  \item \emph{No safety guarantee.} No policy is demonstrated safe on the test script, and the cost of Safe-CQL is estimated on tables of the training set.% REG: E12-e, NO-safe, NO-budget
+  \item \emph{No superiority over a table.} A table built on the same cells has a higher DM reward and a lower DM cost than the learned agents on the main test script, with the circularity noted above.% REG: E12-f, NO-rl
+  \item \emph{No generalization beyond the test script.} The test is one script, and the evaluation is conditional on it.% REG: D6-b, NO-general
+  \item \emph{No causal reading of the scheduler.} The scheduler is associated with a higher cost in 12 of 12 pairs, but it cannot be separated from the execution time.% REG: D7-b, NO-pfcause
+  \item \emph{Assumptions.} Results hold under (A1) to (A3) of Sec.~\ref{sec:assumptions}: the context is exogenous to the action, the logged configuration is as good as assigned given the context, and the independent unit is the script. (A1) is not shown, (A2) is contradicted for the scheduler, and (A3) is a hypothesis.% REG: D6-f, D7-c, D7-b, D8-b, D6-b
+\end{itemize}

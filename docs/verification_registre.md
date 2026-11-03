@@ -3,7 +3,7 @@
 Produit par `src/checks/verifie_registre.py` (lecture seule ; aucun calcul nouveau ; ni `data/` ni `tests/` lus).
 Règles de verdict : voir la docstring du script. Seules les lignes contenant au moins un nombre significatif sont listées.
 
-Total : 155 lignes — OK 153, AMBIGU 2, ABSENT 0.
+Total : 165 lignes — OK 163, AMBIGU 2, ABSENT 0.
 
 | ligne | repère | verdict | détail |
 |---|---|---|---|
@@ -162,3 +162,13 @@ Total : 155 lignes — OK 153, AMBIGU 2, ABSENT 0.
 | 423 | GRID-a | OK | sources : e11_alpha_grid |
 | 424 | GRID-b | OK | sources : e11_alpha_grid |
 | 425 | GRID-c | OK | sources : e11_alpha_grid |
+| 437 | EST-a | OK | aucun nombre à vérifier |
+| 438 | EST-b | OK | aucun nombre à vérifier |
+| 439 | EST-c | OK | aucun nombre à vérifier |
+| 440 | BOOT-a | OK | sources : e12_attente_pre_test |
+| 441 | GRP-a | OK | sources : d6_shared_scripts |
+| 442 | PREREG-a | OK | sources : e12_attente_pre_test |
+| 443 | FREEZE-a | OK | aucun nombre à vérifier |
+| 444 | CRIT-a | OK | sources : e12_attente_pre_test |
+| 445 | CONV-a | OK | sources : e2_safe_cql_diagnostic |
+| 446 | FOLD-a | OK | aucun nombre à vérifier |
