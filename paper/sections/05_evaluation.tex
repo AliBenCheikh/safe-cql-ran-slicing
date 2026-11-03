@@ -66,9 +66,9 @@ This freeze guards against changes made after the fact; it does not make the rea
 
 The test cluster was read twice, and neither reading is an independent, blind test.% REG: E12-k, NO-blind
 The first reading was made in an earlier evaluation, with the agents at $\alpha=0.5$, IQL and the baselines, and its results were known to us.% REG: E12-k
-The final reading is therefore the second: the choices, criteria and thresholds were fixed before it, but the expectations were not blind, since several of them restate results of the first reading.% REG: E12-k, NO-blind
+The final reading is therefore the second: the choices, criteria and thresholds were fixed before it, but the expectations were written after the first reading and knew its results, and several of them restate those results.% REG: E12-k, E12-l, NO-blind
 What is new in the second reading is $\alpha=0.1$ for both agents, the ablation $\gamma=0$, the breakdown by script and the intervals by script.% REG: E12-k
-Two aggregates of the test script (the shares of load bins and the number of actions) had also been displayed during an earlier diagnostic, and the descriptive analyses of the scheduler order and of the execution blocks had examined the main test script without tuning anything.% REG: E12-k
+Two aggregates of the test script (the shares of load bins and the number of actions) had also been displayed during an earlier diagnostic, and the descriptive checks D6 to D8 of the scheduler order and of the execution blocks had examined results of the main test script without setting any configuration.% REG: E12-k, E12-m
 In this study, $\alpha$ was selected on validation folds, not on the test script, and the other hyperparameters of the evaluated agents were fixed by us and not tuned.% REG: E12-k, E11-b, OPT-a, IQL-a
 The analyses of the latency filter and of the timestamp anomalies cover the training set only, and the effect of the filter on the test set is unknown.% REG: E13d-h, NO-filter
 
