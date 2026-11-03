@@ -127,48 +127,48 @@ Total : 165 lignes — OK 163, AMBIGU 2, ABSENT 0.
 | 304 |   - E13d-d : 351/510 réservations seulement ont un coût ≤ d. | OK | sources : e13d_filtre_latence |
 | 315 |   - E13b-c : le coût URLLC n'est pas résoluble à d en dessou | OK | sources : e13b_pas_echantillonnage |
 | 318 | - **Formulation défendable :** boucle plus lente (type rApp  | OK | sources : e13b_pas_echantillonnage |
-| 345 | chiffre | OK | aucun nombre à vérifier |
-| 347 | `pct_safe` par politique en E12 : présent dans `re | OK | aucun nombre à vérifier |
-| 348 | λ finaux des runs E12 | OK | aucun nombre à vérifier |
-| 349 | Résultats d'une analyse de queue (`urllc_p99`) ou  | OK | aucun nombre à vérifier |
-| 350 | Résultats complets de la phase 3 (100 epochs × 5 s | OK | sources : phase3_learning_curves |
-| 351 | Rapport propre pour E13c | OK | aucun nombre à vérifier |
-| 352 | Source de d = 0,03 et de Lmax | OK | sources : dataset_notes |
-| 353 | Contenu d'un manuscrit révisé (corrections R3-W3,  | OK | sources : audit_report |
-| 359 | - **Phase 1 contre notebook :** 224 193 lignes contre 225 31 | OK | sources : decision_memo, phase1_pipeline |
-| 360 | - **D5 contre notebook :** (30, RR, charge basse) 0,142 cont | OK | sources : decision_memo |
-| 361 | - **Phase 1 contre phase 0 :** ventilation des 101 réservati | OK | sources : phase1_pipeline |
-| 366 | - **[Q]** Que valent les anomalies d'horodatage et le filtre | OK | sources : dataset_notes |
-| 368 | - **[Q]** Le λ = 12,22 du notebook vient-il de la taille d'e | OK | sources : audit_report |
-| 369 | - **[Q]** Le slicing 5 est-il « pas de slicing » ou « 50 PRB | OK | sources : decision_memo |
-| 385 | STATE-a | OK | aucun nombre à vérifier |
-| 386 | REW-a | OK | aucun nombre à vérifier |
-| 387 | REC-a | OK | aucun nombre à vérifier |
-| 388 | SCALE-a | OK | aucun nombre à vérifier |
-| 389 | SCALE-b | OK | sources : e12_artefacts_entrainement |
-| 395 | ARCH-a | OK | sources : phase2_baselines |
-| 396 | OPT-a | OK | sources : phase2_baselines |
-| 397 | CQL-a | OK | aucun nombre à vérifier |
-| 398 | IQL-a | OK | sources : phase2_baselines |
-| 399 | SAFE-a | OK | sources : e2_safe_cql_diagnostic |
-| 400 | SAFE-b | OK | sources : e2_safe_cql_diagnostic |
-| 406 | TG-a | OK | aucun nombre à vérifier |
-| 407 | BASE-a | OK | sources : phase2_baselines |
-| 408 | BC-a | OK | sources : audit_report |
-| 414 | E12P-a | OK | sources : e12_attente_pre_test |
-| 415 | E12P-b | OK | sources : e12_attente_pre_test |
-| 416 | E12P-c | OK | sources : e12_artefacts_entrainement |
-| 417 | E12P-d | OK | aucun nombre à vérifier |
-| 423 | GRID-a | OK | sources : e11_alpha_grid |
-| 424 | GRID-b | OK | sources : e11_alpha_grid |
-| 425 | GRID-c | OK | sources : e11_alpha_grid |
-| 437 | EST-a | OK | aucun nombre à vérifier |
-| 438 | EST-b | OK | aucun nombre à vérifier |
-| 439 | EST-c | OK | aucun nombre à vérifier |
-| 440 | BOOT-a | OK | sources : e12_attente_pre_test |
-| 441 | GRP-a | OK | sources : d6_shared_scripts |
-| 442 | PREREG-a | OK | sources : e12_attente_pre_test |
-| 443 | FREEZE-a | OK | aucun nombre à vérifier |
-| 444 | CRIT-a | OK | sources : e12_attente_pre_test |
-| 445 | CONV-a | OK | sources : e2_safe_cql_diagnostic |
-| 446 | FOLD-a | OK | aucun nombre à vérifier |
+| 346 | chiffre | OK | aucun nombre à vérifier |
+| 348 | `pct_safe` par politique en E12 : présent dans `re | OK | aucun nombre à vérifier |
+| 349 | λ finaux des runs E12 | OK | aucun nombre à vérifier |
+| 350 | Résultats d'une analyse de queue (`urllc_p99`) ou  | OK | aucun nombre à vérifier |
+| 351 | Résultats complets de la phase 3 (100 epochs × 5 s | OK | sources : phase3_learning_curves |
+| 352 | Rapport propre pour E13c | OK | aucun nombre à vérifier |
+| 353 | Source de d = 0,03 et de Lmax | OK | sources : dataset_notes |
+| 354 | Contenu d'un manuscrit révisé (corrections R3-W3,  | OK | sources : audit_report |
+| 360 | - **Phase 1 contre notebook :** 224 193 lignes contre 225 31 | OK | sources : decision_memo, phase1_pipeline |
+| 361 | - **D5 contre notebook :** (30, RR, charge basse) 0,142 cont | OK | sources : decision_memo |
+| 362 | - **Phase 1 contre phase 0 :** ventilation des 101 réservati | OK | sources : phase1_pipeline |
+| 367 | - **[Q]** Que valent les anomalies d'horodatage et le filtre | OK | sources : dataset_notes |
+| 369 | - **[Q]** Le λ = 12,22 du notebook vient-il de la taille d'e | OK | sources : audit_report |
+| 370 | - **[Q]** Le slicing 5 est-il « pas de slicing » ou « 50 PRB | OK | sources : decision_memo |
+| 386 | STATE-a | OK | aucun nombre à vérifier |
+| 387 | REW-a | OK | aucun nombre à vérifier |
+| 388 | REC-a | OK | aucun nombre à vérifier |
+| 389 | SCALE-a | OK | aucun nombre à vérifier |
+| 390 | SCALE-b | OK | sources : e12_artefacts_entrainement |
+| 396 | ARCH-a | OK | sources : phase2_baselines |
+| 397 | OPT-a | OK | sources : phase2_baselines |
+| 398 | CQL-a | OK | aucun nombre à vérifier |
+| 399 | IQL-a | OK | sources : phase2_baselines |
+| 400 | SAFE-a | OK | sources : e2_safe_cql_diagnostic |
+| 401 | SAFE-b | OK | sources : e2_safe_cql_diagnostic |
+| 407 | TG-a | OK | aucun nombre à vérifier |
+| 408 | BASE-a | OK | sources : phase2_baselines |
+| 409 | BC-a | OK | sources : audit_report |
+| 415 | E12P-a | OK | sources : e12_attente_pre_test |
+| 416 | E12P-b | OK | sources : e12_attente_pre_test |
+| 417 | E12P-c | OK | sources : e12_artefacts_entrainement |
+| 418 | E12P-d | OK | aucun nombre à vérifier |
+| 424 | GRID-a | OK | sources : e11_alpha_grid |
+| 425 | GRID-b | OK | sources : e11_alpha_grid |
+| 426 | GRID-c | OK | sources : e11_alpha_grid |
+| 438 | EST-a | OK | aucun nombre à vérifier |
+| 439 | EST-b | OK | aucun nombre à vérifier |
+| 440 | EST-c | OK | aucun nombre à vérifier |
+| 441 | BOOT-a | OK | sources : e12_attente_pre_test |
+| 442 | GRP-a | OK | sources : d6_shared_scripts |
+| 443 | PREREG-a | OK | sources : e12_attente_pre_test |
+| 444 | FREEZE-a | OK | aucun nombre à vérifier |
+| 445 | CRIT-a | OK | sources : e12_attente_pre_test |
+| 446 | CONV-a | OK | sources : e2_safe_cql_diagnostic |
+| 447 | FOLD-a | OK | aucun nombre à vérifier |
