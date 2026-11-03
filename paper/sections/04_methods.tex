@@ -1,0 +1,159 @@
+% Section 4 -- Methods: offline agents and baselines (IEEEtran)
+% Source of every claim: docs/registre_affirmations.md ([V] stated as fact, [H] stated as hypothesis, [Q] omitted).
+% Each factual or numeric sentence is followed by a "% REG:" comment giving the registry row(s).
+% "CODE:" marks a statement read in src/, "DOC:" one read in a report of docs/ that has no registry row
+% (both are listed in docs/paper_04_methods.md, list 2).
+\section{Offline Agents and Baselines}
+\label{sec:methods}
+
+This section describes the agents and the baselines that are compared, their exact configuration, the choice of the conservatism weight $\alpha$, and a diagnostic of the Lagrange multiplier $\lambda$.% STRUCT
+The evaluation protocol and the off-policy estimators are in Sec.~\ref{sec:results}.% STRUCT
+
+\subsection{Common Setup}
+\label{sec:common_setup}
+
+All agents learn from logged windows of the training split, which is made of clusters~2 and~3; the test cluster is not used for training.% REG: PLAT-a, E12-k
+Each training record holds the context $\mathbf{x}$ of Eq.~\eqref{eq:state}, the logged action $a$, the reward $r$, the table cost $\hat c$, the next context $\mathbf{x}'$ and a terminal flag; the last window of an episode is terminal, and windows are never linked across a gap (Sec.~\ref{sec:data_pipeline}).% REG: D3-a; CODE: src/common.py (make_arrays), src/build_dataset.py
+The contexts are standardized with the mean and standard deviation of the training windows, and the reward is divided by $r_{\mathrm{scale}}$, the standard deviation of the training reward (value: TODO).% REG: E12-k; CODE: src/common.py (fit_zscore), src/agents/cql.py (r_scale)
+The table cost $\hat c(a,\beta)$ is the one of Sec.~\ref{sec:cost}, with three load bins, fitted on the training split; each record carries the value of its \emph{logged} action in its own load bin.% REG: AU-b; CODE: src/common.py (make_arrays, key \texttt{c})
+The Q-networks are multilayer perceptrons with two hidden layers of 256 ReLU units and one output per action, trained with Adam (learning rate $3\times10^{-4}$), batches of 1\,024 windows and a soft target update of rate $0.005$.% REG: E12-k; CODE: src/agents/cql.py (CFG, mlp); DOC: docs/phase2_baselines.md
+The training discount is $\gamma=0.7$ for the main comparison; the one-step formulation of Sec.~\ref{sec:formulation} corresponds to the ablation $\gamma=0$, whose outcome depends on the set of scripts considered.% REG: E12-i, E2-b
+We use no gradient clipping, no clipped double-Q learning, and no model selection: the policy is the one of the last epoch, and no convergence is required.% REG: E12-k; CODE: src/agents/cql.py (train_cql); DOC: docs/e12_attente_pre_test.md
+
+\subsection{Behavior Cloning}
+\label{sec:bc}
+
+Behavior cloning predicts the logged action from the context.% STRUCT
+It is the only baseline of the original manuscript, which is one of the points raised by the reviewers.% REG: R3-W1
+The revised code base contains no behavior-cloning agent, and none enters the final evaluation; we therefore report no behavior-cloning result and do not use it as a lower bound.% REG: R3-W1; CODE: src/agents/ (cql.py, iql.py, safe_cql.py), src/baselines.py
+The accuracies recorded in the original notebook are recorded outputs and are not reproduced.% REG: NO-notebook
+What the audit measures instead is how well simple classifiers predict the logged action from the context: on the 12-dimensional notebook state the lagged variables alone give 30.5--32.8\% accuracy over the eight actions against a chance level of 12.4\%, and this measurement has not been repeated on the 10-dimensional state.% REG: D4-a, D4-d
+A behavior-cloning agent would therefore partly recover the logged configuration (Sec.~\ref{sec:state})~\cite{TODO-bc}.% REG: D4-a, NO-dyn
+
+\subsection{Conservative Q-Learning}
+\label{sec:cql}
+
+CQL~\cite{TODO-cql} fits a Q-network over the eight actions and adds to the Bellman error a penalty that lowers the log-sum-exp of the values of all actions and raises the value of the logged one,
+\begin{equation}
+  \mathcal{L}_{\mathrm{CQL}}=\mathbb{E}\Bigl[\bigl(Q(\mathbf{x},a)-y\bigr)^{2}\Bigr]+\alpha\,\mathbb{E}\Bigl[\log\sum_{a'}e^{Q(\mathbf{x},a')}-Q(\mathbf{x},a)\Bigr],
+  \label{eq:cql}
+\end{equation}% REG: E12-k; CODE: src/agents/cql.py (cql_loss)
+with the target $y=\tilde r+\gamma\,(1-\mathrm{done})\,Q_{\bar\theta}\bigl(\mathbf{x}',\arg\max_{a'}Q_\theta(\mathbf{x}',a')\bigr)$, where $\tilde r=r/r_{\mathrm{scale}}$ and $Q_{\bar\theta}$ is the target network.% REG: E12-k; CODE: src/agents/cql.py (cql_loss; double-DQN target); \cite{TODO-double-dqn}
+The policy is the greedy action of $Q_\theta$.% REG: E12-k; CODE: src/agents/cql.py (greedy_actions)
+With $\alpha=0$ the penalty vanishes.% REG: E12-k; CODE: src/agents/cql.py (cql_loss)
+The unconstrained agent uses the reward only and ignores the cost.% REG: E12-a; CODE: src/agents/cql.py
+
+\subsection{Implicit Q-Learning}
+\label{sec:iql}
+
+IQL~\cite{TODO-iql} avoids querying actions that are absent from the data.% STRUCT
+It fits a state value $V$ by expectile regression (expectile $0.7$) of the target-network value of the logged action, a Q-network on the target $\tilde r+\gamma\,(1-\mathrm{done})\,V(\mathbf{x}')$, and a policy network by cross-entropy on the logged action weighted by $\min\bigl(e^{\beta(Q_{\bar\theta}-V)},100\bigr)$ with $\beta=3.0$.% REG: E12-k; CODE: src/agents/iql.py (IQL_CFG, iql_losses); DOC: docs/phase2_baselines.md
+The policy at evaluation is the arg max of the policy network.% REG: E12-k; CODE: src/agents/iql.py (greedy_actions)
+Like CQL, IQL ignores the cost, and it has no hyperparameter $\alpha$.% REG: E12-a; CODE: src/agents/iql.py
+The expectile, $\beta$ and the weight clip are our choices and were not tuned.% REG: E12-k; DOC: docs/phase2_baselines.md
+
+\subsection{Table-Greedy: A Baseline Without Reinforcement Learning}
+\label{sec:tablegreedy}
+
+Table-greedy needs no training and uses only the load bin.% REG: E12-f; CODE: src/baselines.py (table_greedy)
+For each load bin it selects the action with the highest mean training reward among the actions whose table cost is at most $d$, and the action with the lowest table cost if no action is feasible in the bin.% REG: E12-f; CODE: src/baselines.py (table_greedy_map)
+It is built on the same training tables as the direct-method estimator, so its direct-method value is the most circular of the figures (Sec.~\ref{sec:results}).% REG: E12-f, AU-c
+We include it because a learned selector is only worth reporting against a lookup built on the same cells, and we do not claim that the learned agents improve on it.% REG: NO-rl, E12-f
+Three other baselines complete the comparison.% STRUCT
+Always-RR and always-PF keep the logged PRB level and fix the scheduler; since they read the logged action they are not deployable policies.% REG: E12-g
+Best-fixed selects one action for all windows, and falls back to the action of lowest cost when no action is feasible on validation, which was the case.% REG: E12-h
+
+\subsection{Safe-CQL}
+\label{sec:safecql}
+
+Safe-CQL trains the CQL agent of Eq.~\eqref{eq:cql} on a penalised reward,
+\begin{equation}
+  \tilde r_\lambda=\frac{r}{r_{\mathrm{scale}}}-\lambda\Bigl(\frac{\hat c}{d}-1\Bigr),\qquad d=0.03,
+  \label{eq:safe_reward}
+\end{equation}% REG: E12-k; CODE: src/agents/safe_cql.py (reward_fn)
+which replaces $\tilde r$ in the target $y$.% REG: E12-k; CODE: src/agents/safe_cql.py (train_cql with reward_fn)
+The cost is expressed in units of the budget so that $\lambda$ has the scale of the standardized reward.% REG: E12-k; CODE: src/agents/safe_cql.py (docstring)
+The term $\hat c$ is the table cost of the logged action of the record, not of an action chosen by the policy.% REG: E12-k; CODE: src/agents/safe_cql.py, src/common.py (make_arrays)
+We hypothesize that the penalty therefore shapes the values of the logged actions directly and reaches the other actions only through the conservative term and the generalization of the network; we have not tested this.% REG: D1-c, E2-d
+
+The multiplier starts at $\lambda=0$ and is updated once per epoch by a projected dual ascent step,
+\begin{equation}
+  \lambda\leftarrow\max\Bigl(0,\ \lambda+\eta\Bigl(\frac{\hat J_C(\pi)}{d}-1\Bigr)\Bigr),\qquad
+  \hat J_C(\pi)=\frac1N\sum_{i=1}^{N}\hat c\bigl(\pi(\mathbf{x}_i),\beta_i\bigr),
+  \label{eq:dual}
+\end{equation}% REG: E12-k; CODE: src/agents/safe_cql.py (update_lambda, on_epoch_end)
+with $\eta=0.1$, where $\pi$ is the current greedy policy and the mean runs over all training windows.% REG: E12-k, E2-b; CODE: src/agents/safe_cql.py (SAFE_CFG)
+The policy used at decision time is the greedy action of $Q_\theta$, with no penalty applied at decision time.% REG: E12-k; CODE: src/agents/safe_cql.py, src/agents/cql.py (greedy_actions)
+The cost signal in Eq.~\eqref{eq:dual} is read from the training table on the training windows, so it is an in-sample quantity.% REG: AU-c, NO-budget
+The multiplier is updated by this rule; we do not call it learned in any sense that implies convergence, and we do not present the cost as stabilizing on the budget.% REG: NO-budget, E2-a
+
+\subsection{Frozen Configurations of the Final Evaluation}
+\label{sec:configs}
+
+The configurations below were fixed, with the criteria and thresholds, before the test split was read for the final evaluation.% REG: E12-k
+That reading is the \emph{second} reading of the test split: an earlier evaluation had already read it with the agents at $\alpha=0.5$, IQL and the baselines, so the test split is neither independent nor blind.% REG: E12-k, NO-blind
+Every configuration was trained on the whole training split (clusters 2 and 3) with seeds 0 to 4, for 100 epochs, and the policy is the one of the last epoch.% REG: E12-k; DOC: docs/e12_attente_pre_test.md; CODE: src/e12_final.py (SEEDS, EPOCHS)
+
+\begin{table}[t]
+\centering
+\caption{Configurations of the final evaluation. All use $d=0.03$, two hidden layers of 256 units, batches of 1\,024, learning rate $3\times10^{-4}$, soft target update $0.005$, 100 epochs and seeds 0--4. The value of $r_{\mathrm{scale}}$ (standard deviation of the training reward) is TODO.}
+\label{tab:configs}
+\begin{tabular}{lcccc}
+\hline
+Name & Agent & $\alpha$ & $\gamma$ & $\eta$ \\
+\hline
+\texttt{safe\_cql\_a0.1} (main) & Safe-CQL & 0.1 & 0.7 & 0.1 \\
+\texttt{cql\_a0.1} & CQL & 0.1 & 0.7 & --- \\
+\texttt{safe\_cql\_a0.5} & Safe-CQL & 0.5 & 0.7 & 0.1 \\
+\texttt{cql\_a0.5} & CQL & 0.5 & 0.7 & --- \\
+\texttt{safe\_cql\_a0.1\_g0} & Safe-CQL & 0.1 & 0 & 0.1 \\
+\texttt{iql} & IQL & --- & 0.7 & --- \\
+\hline
+\end{tabular}
+\end{table}% REG: E12-k; CODE: src/e12_final.py (CONFIGS), src/agents/ (CFG, SAFE_CFG, IQL_CFG); DOC: docs/e12_attente_pre_test.md
+
+IQL uses an expectile of $0.7$, $\beta=3.0$ and a weight clip of $100$ (Sec.~\ref{sec:iql}).% REG: E12-k; CODE: src/agents/iql.py (IQL_CFG)
+The main configuration is \texttt{safe\_cql\_a0.1}, with $\alpha$ chosen by the fallback rule below, and the other configurations serve as comparisons at equal $\alpha$, as continuity with the earlier evaluation, and as an ablation on $\gamma$.% REG: E12-k, E11-b
+The final multipliers and the convergence status of these runs are not reported in this paper (TODO).% REG: E12-k
+
+\subsection{Choice of the Conservatism Weight}
+\label{sec:alpha}
+
+We examined $\alpha\in\{0,0.02,0.05,0.1,0.2,0.5\}$ with a validation by script on the training split only: a network trained on one of the two dominant training scripts is validated on the other, in both directions, with seeds 0 to 4, which gives 60 runs, all completed.% REG: E11-a, D6-b; DOC: docs/e11_alpha_grid.md
+The costs and rewards of the validation are read in the tables of the validation script and are not measurements of the system, and the test split is not read.% REG: E11-a, E12-k
+The grid was set after a first diagnostic (Sec.~\ref{sec:lambda_diag}) had used $\alpha\in\{0,0.1,0.5\}$, so it is not a blind search.% REG: E2-e; DOC: docs/e11_alpha_grid.md (limit 3)
+
+The selection rule was frozen before the grid: a value of $\alpha$ is feasible if its mean validation cost is at most $d$ in both directions; among the feasible values the one with the highest mean reward is kept; if none is feasible, the fallback keeps the value with the lowest mean validation cost over the two directions.% REG: E11-b; DOC: docs/e11_alpha_grid.md (selection rule)
+\textbf{No value of $\alpha$ is feasible}: in the direction from the second script to the first, the mean validation cost exceeds $d$ for every $\alpha$ (from 0.0405 to 0.0504).% REG: E11-a
+The value $\alpha=0.1$ is retained by the fallback and not on its merits: $\alpha=0.05$, $0.1$ and $0.2$ are practically tied, with mean validation costs of 0.03470, 0.03440 and 0.03464 against a spread between seeds of 0.0010 to 0.0021.% REG: E11-b, NO-alpha
+The two directions move in opposite ways as $\alpha$ grows: in the first direction the cost decreases (from 0.0329 to 0.0227 at $\alpha=0.2$) and falls below $d$ from $\alpha=0.02$, whereas in the second it increases (from 0.0405 to 0.0504); the validation reward decreases in both (from 9.12 to 7.86 and from 10.06 to 7.90).% REG: E11-c
+Averaging the two directions for the fallback hides this opposition.% REG: E11-c
+We do not claim that $\alpha=0.1$ is the best hyperparameter.% REG: NO-alpha
+
+For reference, at $\alpha=0.1$ the validation reward of the Q-network is below the one of the table-greedy built on the other script's tables (8.056 against 10.352, and 8.321 against 11.370), and in the second direction its cost is also higher (0.0454 against 0.0303).% REG: E11-e, NO-rl
+Two scripts are too few to separate a property of the pair from a general property, and the cells of the tables are poor in reservations.% REG: TR-c, D5-a
+
+\subsection{Diagnostic of the Lagrange Multiplier}
+\label{sec:lambda_diag}
+
+\paragraph{What the tables allow.}
+The budget $d=0.03$ is feasible on the tables of the two scripts and of the whole training set, with minimal attainable costs of 0.0211, 0.0112 and 0.0182.% REG: E1-a
+The optimal multiplier read in the table is small, 0 for the first script, 0.065 for the second and 0.244 for the training set, against the 12.22 recorded in the original notebook, a value we do not reproduce.% REG: E1-b, NO-notebook
+The optimal multiplier is poorly determined: its interval runs from 0 to about 1--3 for the two scripts, and the constraint is active in 36--74\% of the resamples.% REG: E1-c
+A deterministic arg max on the table is nearly as good as the randomized solution (a gain of 0.1\% of the reward), with a cost that can reach 0.0286 and 0.0297, just under $d$.% REG: E1-d
+The divergence of $\lambda$ therefore does not come from the cost table.% REG: E1-b
+
+\paragraph{What the training does.}
+In 60 diagnostic runs (six variants, two folds, five seeds), none satisfies the frozen convergence criterion, and the condition that the greedy cost lies in the band $[0.9\,d;\,d]$ at the end is satisfied 0 times out of 60.% REG: E2-a
+These runs train on one fold of 73\,000 to 80\,000 windows and not on the whole training set.% REG: E2-b
+For the configuration $\gamma=0.7$, $\alpha=0.5$ and 100 epochs, the final multiplier is $1.935\pm0.045$ on the first fold and $0.283\pm0.011$ on the second, with greedy costs of 0.0358 and 0.0311, both above $d$; with 300 epochs it reaches 5.838 and 0.906 and is still rising.% REG: E2-b
+Setting $\gamma=0$ does not stop the drift of $\lambda$ (final values 3.112 and 0.595, greedy costs 0.0403 and 0.0320), so the hypothesis that the discount is the cause is not supported.% REG: E2-c
+The revised criterion, which is descriptive, fails on the slope of $\lambda$ everywhere, and the number of converged runs equals the number of runs that pass this condition.% REG: E11-d
+With $\alpha\ge0.5$ the Q-network reproduces the logged action on 64--82\% of the windows of its fold, against 61--63\% at $\alpha=0.1$ and 20--32\% at $\alpha=0$.% REG: E2-d
+Lower values of $\alpha$ give greedy costs closer to $d$ with a smaller $\lambda$.% REG: E2-e
+We hypothesize that the multiplier grows with $\alpha$ to compensate for the conservative penalty, or because it follows the constraint; we have not isolated the two.% REG: E2-d, E2-e
+
+\paragraph{Consequence for the claims.}
+The multiplier does not converge in the sense of our criterion, and the diagnostic does not show that the trained policy respects the budget.% REG: E2-a, NO-budget
+The final evaluation trains for a fixed number of epochs and reads the last epoch, and it makes no claim of convergence of $\lambda$.% REG: E12-k, NO-budget
+The recorded value of $\lambda$ in the original notebook (12.22 at the last epoch, still increasing, with a cost of 0.032 above $d$) is a recorded output and is not reproduced.% REG: AU-f, NO-notebook
