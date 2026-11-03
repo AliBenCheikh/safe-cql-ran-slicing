@@ -1,0 +1,146 @@
+% Section 3 -- Problem formulation (IEEEtran)
+% Source of every claim: docs/registre_affirmations.md ([V] stated as fact, [H] stated as hypothesis, [Q] omitted).
+% Each factual or numeric sentence is followed by a "% REG:" comment giving the registry row(s).
+% "CODE:" marks a statement read in src/ that has no registry row (listed in docs/paper_03_formulation.md, list 2).
+\section{Problem Formulation}
+\label{sec:formulation}
+
+This section states the decision problem that the learning experiments address.% STRUCT
+The platform, the dataset and the canonical pipeline are described in Sec.~\ref{sec:data_pipeline}; the window construction and the cost definition are recalled here only as far as the formulation needs them.% REG: WIN-a, COST-a
+
+\subsection{Scope: One-Step Configuration Selection}
+\label{sec:scope}
+
+The dataset contains no transition in which the configuration changes (Sec.~\ref{sec:config_constant}).% REG: D1-a, D1-c
+It therefore cannot identify the effect of an action on the next state, and we do not model the state transition kernel.% REG: D1-c, NO-seq
+We formulate the task as a \emph{constrained contextual bandit}: at each decision window the selector observes a context $\mathbf{x}$ and chooses one of eight configurations, and the discount factor is $\gamma=0$.% REG: D1-c, NO-seq
+The choice $\gamma=0$ follows from D1 in Sec.~\ref{sec:config_constant}: with a configuration that is constant within every reservation, no logged data constrains a value that bootstraps over successive windows.% REG: D1-a, D1-c
+It is a modelling choice and not a finding that the effect of an action is confined to the current window.% REG: D1-c, E2-c
+The agents of the main comparison were trained with a discount of 0.7, and the variant with $\gamma=0$ is an ablation, whose outcome depends on the set of scripts considered (Sec.~\ref{sec:results}).% REG: E12-i, E2-b
+
+We do not claim sequential control of the slicing, nor that the Markov property holds for the state below.% REG: NO-seq, D1-c
+Evaluation is at the reservation level, and sequential control is left as future work.% REG: NO-seq
+
+We frame the selector as a component of a slower loop, in the style of an rApp hosted by the Non-RT RIC, rather than as an xApp of the Near-RT RIC~\cite{TODO-oran-timescales}.% REG: NO-nearrt
+This framing is a choice that has to be justified, not a result: the decision window is 5\,s, the files do not allow the 10\,ms--1\,s range for either signal, and we run no window-sensitivity experiment (Sec.~\ref{sec:sampling}).% REG: WIN-a, E13b-d, E13b-e, NO-nearrt
+We do not simulate a deployed control loop, since the dataset contains no action change to validate one against.% REG: D1-c, NO-nearrt
+
+\subsection{Context}
+\label{sec:state}
+
+A decision instance is one non-overlapping window of 5\,s, with the window index defined in Sec.~\ref{sec:data_pipeline}.% REG: WIN-a
+The context $\mathbf{x}_t\in\mathbb{R}^{10}$ has two groups of variables,
+\begin{equation}
+  \mathbf{x}_t=\bigl[\,n_t,\ \mathrm{rsrp}_t,\ \mathrm{snr}_t,\ \mathrm{mcs}_t,\ \mathrm{bler}_t,\ b_t,\ \rho_{t-1},\ \rho_{t-2},\ \ell_{t-1},\ \ell_{t-2}\,\bigr],
+  \label{eq:state}
+\end{equation}% REG: AU-a; CODE: src/build_dataset.py (STATE_COLS)
+where $n_t$ is the number of active UEs; $\mathrm{rsrp}_t$, $\mathrm{snr}_t$, $\mathrm{mcs}_t$, $\mathrm{bler}_t$ and $b_t$ are the downlink radio indicators and the uplink buffer status (\texttt{ul\_buff}) of the current window, averaged over the samples of the attached eMBB UEs; and $\rho_{t-1},\rho_{t-2}$ and $\ell_{t-1},\ell_{t-2}$ are the one- and two-window lags of the eMBB reward and of the median URLLC latency.% REG: AU-a; CODE: src/build_dataset.py (RADIO_COLS, LAG_COLS, _embb_stream)
+The original notebook also placed the reward $\rho_t$ and the median latency $\ell_t$ of the current window in the state, which gave 12 dimensions; they are removed, and only their lags remain.% REG: AU-a
+Lags are formed inside an episode, and a gap in the windows starts a new episode (Sec.~\ref{sec:data_pipeline}).% REG: D3-a
+
+The configuration is not a variable of $\mathbf{x}_t$, but the context is not free of information about it.% REG: D4-a, NO-dyn
+On the 12-dimensional state of the original notebook, the lagged variables alone predict the logged action with 30.5--32.8\% accuracy over the eight actions, against a chance level of 12.4\%.% REG: D4-a
+These accuracies have not been re-measured on the 10-dimensional state above.% REG: D4-a, D4-d
+Moreover, the lags are outcomes recorded under the logged configuration, which is constant within a reservation, so the context contains outcomes of the action that the selector is asked to choose.% REG: D1-a, D4-a
+We therefore do not interpret the selector as having learned an effect of the configuration that is independent of the logged one, and a learned selector may partly act as a classifier of the logged configuration.% REG: NO-dyn, D4-a
+We hypothesize that adding $a_{t-1}$ to the context would add little, because the action is constant within a reservation and is therefore already predictable; this is an argument and not an experimental result.% REG: D4-c
+
+\subsection{Actions}
+\label{sec:actions}
+
+An action selects the PRB split between the two slices and the MAC scheduler,
+\begin{equation}
+  a=(p,m),\qquad p\in\{9,21,30,39\},\quad m\in\{\mathrm{RR},\mathrm{PF}\},
+  \label{eq:action}
+\end{equation}% REG: PLAT-a
+where $p$ is the number of PRBs of the eMBB slice, which gives $|\mathcal{A}|=8$ actions (Table~\ref{tab:actions}).% REG: PLAT-a
+The fifth slicing of the dataset, listed as 50/0 in the dataset README, is not an action; the README label and the field \texttt{slicing\_enabled=0} are not reconciled (Sec.~\ref{sec:data_pipeline}).% REG: D1-b, PLAT-a
+
+\begin{table}[t]
+\centering
+\caption{Action set: four eMBB/URLLC PRB splits $\times$ two schedulers.}
+\label{tab:actions}
+\begin{tabular}{ccc}
+\hline
+eMBB/URLLC PRBs & Scheduler RR & Scheduler PF \\
+\hline
+9/41  & $(9,\mathrm{RR})$  & $(9,\mathrm{PF})$ \\
+21/29 & $(21,\mathrm{RR})$ & $(21,\mathrm{PF})$ \\
+30/20 & $(30,\mathrm{RR})$ & $(30,\mathrm{PF})$ \\
+39/11 & $(39,\mathrm{RR})$ & $(39,\mathrm{PF})$ \\
+\hline
+\end{tabular}
+\end{table}% REG: PLAT-a
+
+All eight actions are logged, but their support is uneven.% REG: D6-c, D5-a
+Only three of the 19 traffic scripts cover all eight actions with usable reservations, and the eight other scripts with usable reservations cover 1 to 5 of the eight configurations.% REG: D6-c
+The cells of the cost table are well supplied with windows but poor in reservations.% REG: D5-a
+The dataset records one configuration per reservation, so a decision per window is a modelling convention: each window is treated as an instance whose logged action is the configuration of its reservation.% REG: D1-a, D1-c
+
+\subsection{Reward}
+\label{sec:reward}
+
+The reward $r_t$ is the throughput of the eMBB slice in Mbps over the window: for each attached eMBB UE we average the downlink bitrate over the samples of the window, and we sum these means over the UEs.% REG: AU-a, D2-b; CODE: src/build_dataset.py (_embb_stream, reward_embb_Mbps)
+The eMBB windows of the UEs share the common origin $t_0$ of Sec.~\ref{sec:clocks}; the original notebook summed windows that were shifted per UE.% REG: D2-b, WIN-a
+The reward is read from the logs, with no performance model.% REG: AU-a
+The estimated alignment of the UE clocks is an assumption that we have not validated independently (Sec.~\ref{sec:clocks}).% REG: D2-a, D2-b
+With the slicing fixed, the difference in reward between PF and RR changes sign across the 12 (script, slicing) pairs and is not distinguishable from zero.% REG: D7-a
+
+\subsection{Cost}
+\label{sec:cost}
+
+The cost $c_t\in[0,1]$ is the fraction of the URLLC packets of the window whose one-way latency exceeds $L_{\max}=20$\,ms,
+\begin{equation}
+  c_t=\frac{1}{N_t}\sum_{i=1}^{N_t}\mathbb{1}\bigl(\ell_i>L_{\max}\bigr),
+  \label{eq:cost}
+\end{equation}% REG: COST-a, E13d-a
+where $\ell_i=(\text{Received Time}-\text{Sent Time})\times 10^{3}$\,ms, and the $N_t$ packets are those kept by the latency filter ($0\le\ell_i<20\,000$\,ms) and pooled over the readable URLLC UEs of the reservation.% REG: COST-a, E13d-a
+A window without any kept packet has no cost row.% REG: COST-a
+The filter is analysed in Sec.~\ref{sec:latency}; that analysis covers the training set only.% REG: E13d-h, NO-filter
+The cost is a rate over a window and not a tail statistic; we report no analysis of the 99th-percentile latency.% REG: R1W2-no
+The budget is $d=0.03$, and we do not document a source for $d$ or for $L_{\max}$~\cite{TODO-budget-latency-source}.% REG: COST-a, NO-source
+
+The resolution of $c_t$ is limited.% REG: E13b-c
+With 10 packets per second per UE and 2 to 3 active UEs, the criterion of at least 34 packets (one violation out of 34 is below $d$) in 99\% of the windows is met at 5\,s for only 7 of the 12 reservations examined.% REG: E13b-c
+
+During training, the cost enters the constraint through a table $\hat c(a,\beta)$ of the mean window cost for each action $a$ and each load bin $\beta$.% REG: AU-b
+The pipeline uses a single table with three bins of $n_t$, with edges $[0;3.5;5.5;8.1]$ and a fallback for cells with fewer than 20 windows, which was not triggered in the canonical pipeline.% REG: AU-b
+We select no number of load levels as optimal (Sec.~\ref{sec:cells}).% REG: NO-bins, E13a2-c
+The table is a coarse estimate: between 47\% and 63\% of its cells have a reservation-level confidence interval that contains $d$.% REG: D5-b
+It also treats the load bin as if it were independent of the action, which the data do not show: the number of active UEs depends on the action across the eight actions.% REG: D7-c
+
+\subsection{Constrained Objective}
+\label{sec:objective}
+
+Let $\pi(a\mid\mathbf{x})$ be a stochastic selector.% STRUCT
+We seek
+\begin{equation}
+  \max_{\pi}\ J_R(\pi)=\mathbb{E}\bigl[r(\mathbf{x},a)\bigr]
+  \quad\text{s.t.}\quad
+  J_C(\pi)=\mathbb{E}\bigl[c(\mathbf{x},a)\bigr]\le d,\qquad d=0.03,
+  \label{eq:objective}
+\end{equation}% REG: COST-a, D1-c, NO-seq
+where $\mathbf{x}$ is drawn from the distribution of contexts, $a\sim\pi(\cdot\mid\mathbf{x})$, and $r(\mathbf{x},a)$ and $c(\mathbf{x},a)$ denote the expected reward and the expected cost of action $a$ in context $\mathbf{x}$.% REG: D1-c
+The constraint is a bound on the \emph{mean per-window cost}; it is not a bound on the cost of each reservation, and it carries no probabilistic guarantee.% REG: NO-safe, E13d-d
+Under a relaxation with multiplier $\lambda\ge0$ the problem becomes the maximization of
+\begin{equation}
+  \mathcal{L}(\pi,\lambda)=J_R(\pi)-\lambda\bigl(J_C(\pi)-d\bigr),
+  \label{eq:lagrangian}
+\end{equation}% REG: NO-budget
+a standard relaxation of constrained problems~\cite{TODO-lagrangian-relaxation}; the estimation of the cost and the update of $\lambda$ are described in Sec.~\ref{sec:method}.% REG: AU-b
+The budget is feasible on the tables of the training scripts: the minimal attainable cost is 0.0211 for script a908e4cc, 0.0112 for script a53521b2 and 0.0182 for the whole training set, all read in tables.% REG: E1-a
+Feasibility on tables does not carry over to training: no run of the diagnostic satisfies the frozen convergence criterion (0 of 60), and no value of $\alpha$ in the grid is feasible on validation.% REG: E2-a, E11-a
+We therefore do not claim that the solution of Eq.~\eqref{eq:objective} is reached, or that the learned selector respects $d$.% REG: NO-budget, E12-e
+
+\subsection{Assumptions and Non-Claims}
+\label{sec:assumptions}
+
+The formulation rests on the following assumptions; none is verified, and some are contradicted by the audit.% REG: D7-c, D7-b, D6-b
+\begin{enumerate}
+  \item[(A1)] \emph{Exogenous context.} The load and the radio context are not influenced by the action. The MGEN traffic is open loop (\texttt{UDP}, \texttt{PERIODIC}), but the emitted rate being identical across reservations is unverified, and the number of active UEs depends on the action across the eight actions (Sec.~\ref{sec:clocks}).% REG: D6-f, D7-c
+  \item[(A2)] \emph{Configuration as good as assigned.} Given the context, the logged configuration is independent of unobserved factors. For the scheduler this is contradicted: PF and RR occupy disjoint blocks of reservations, 13\,h to about 8 days apart, so the scheduler is not separable from the execution time (Sec.~\ref{sec:confound}).% REG: D7-b, D8-b
+  \item[(A3)] \emph{Independent unit.} The independent unit for generalization is the script; this hypothesis is strongly supported by the structure of the data but not tested (Sec.~\ref{sec:scripts}).% REG: D6-b
+\end{enumerate}
+
+With these assumptions, we make no claim of sequential control, of a Markov property, of a safety guarantee, of Near-RT validation, of generalization to other scripts, or of superiority of a learned selector over a table built on the same cells.% REG: NO-seq, NO-safe, NO-nearrt, NO-general, NO-rl
+We describe the scheduler association as an association and not as a causal effect.% REG: NO-pfcause
