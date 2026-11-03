@@ -84,7 +84,8 @@ The convergence criterion of the first diagnostic of Sec.~\ref{sec:lambda_diag} 
 It requires that the spread of $\lambda$ be below 0.02; that either $\lambda>0$ and the greedy cost stay in the band $[0.9\,d;\,d]$, or $\lambda=0$ and the cost be at most $d$; and that the 95\% interval of the slope of $\lambda$ over the epochs contain 0.% REG: CONV-a
 The greedy cost is read in the training table on the training windows of the fold, so it is an in-sample quantity.% REG: CONV-a
 The revised criterion of Sec.~\ref{sec:alpha} is descriptive: its tolerance was calibrated on runs already observed.% REG: E11-d
-We have not applied the criterion to the runs of the final evaluation, whose training was done for a fixed number of epochs and read at the last epoch.% REG: CONV-a, E12P-a, E12P-c
+Applied to the 15 Safe-CQL runs of the final evaluation, which were trained for a fixed number of epochs and read at the last epoch, the criterion is met by none of them.% REG: CONV-a, E12P-a, E12P-e
+The spread of $\lambda$ over the last 20 epochs is below 0.02 in three of the five runs at $\alpha=0.1$, but the cost band and the slope condition fail in all 15 runs, so the final $\lambda$ should not be read as a converged dual variable.% REG: E12P-e
 
 \subsection{Validation Folds}
 \label{sec:folds}

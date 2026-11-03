@@ -3,7 +3,7 @@
 Produit par `src/checks/verifie_registre.py` (lecture seule ; aucun calcul nouveau ; ni `data/` ni `tests/` lus).
 Règles de verdict : voir la docstring du script. Seules les lignes contenant au moins un nombre significatif sont listées.
 
-Total : 167 lignes — OK 165, AMBIGU 2, ABSENT 0.
+Total : 168 lignes — OK 166, AMBIGU 2, ABSENT 0.
 
 | ligne | repère | verdict | détail |
 |---|---|---|---|
@@ -161,16 +161,17 @@ Total : 167 lignes — OK 165, AMBIGU 2, ABSENT 0.
 | 418 | E12P-b | OK | sources : e12_attente_pre_test |
 | 419 | E12P-c | OK | sources : e12_artefacts_entrainement |
 | 420 | E12P-d | OK | aucun nombre à vérifier |
-| 426 | GRID-a | OK | sources : e11_alpha_grid |
-| 427 | GRID-b | OK | sources : e11_alpha_grid |
-| 428 | GRID-c | OK | sources : e11_alpha_grid |
-| 440 | EST-a | OK | aucun nombre à vérifier |
-| 441 | EST-b | OK | aucun nombre à vérifier |
-| 442 | EST-c | OK | aucun nombre à vérifier |
-| 443 | BOOT-a | OK | sources : e12_attente_pre_test |
-| 444 | GRP-a | OK | sources : d6_shared_scripts |
-| 445 | PREREG-a | OK | sources : e12_attente_pre_test |
-| 446 | FREEZE-a | OK | aucun nombre à vérifier |
-| 447 | CRIT-a | OK | sources : e12_attente_pre_test |
-| 448 | CONV-a | OK | sources : e2_safe_cql_diagnostic |
-| 449 | FOLD-a | OK | aucun nombre à vérifier |
+| 421 | E12P-e | OK | sources : e12_convergence |
+| 427 | GRID-a | OK | sources : e11_alpha_grid |
+| 428 | GRID-b | OK | sources : e11_alpha_grid |
+| 429 | GRID-c | OK | sources : e11_alpha_grid |
+| 441 | EST-a | OK | aucun nombre à vérifier |
+| 442 | EST-b | OK | aucun nombre à vérifier |
+| 443 | EST-c | OK | aucun nombre à vérifier |
+| 444 | BOOT-a | OK | sources : e12_attente_pre_test |
+| 445 | GRP-a | OK | sources : d6_shared_scripts |
+| 446 | PREREG-a | OK | sources : e12_attente_pre_test |
+| 447 | FREEZE-a | OK | aucun nombre à vérifier |
+| 448 | CRIT-a | OK | sources : e12_attente_pre_test |
+| 449 | CONV-a | OK | sources : e2_safe_cql_diagnostic |
+| 450 | FOLD-a | OK | aucun nombre à vérifier |
