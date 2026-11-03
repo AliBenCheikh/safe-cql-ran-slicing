@@ -35,4 +35,10 @@ Tags : **[V]** vérifié sur les fichiers lus · **[H]** hypothèse non vérifi�
 - **[Q]** Rapport durée `ue_metrics` / durée `enb` : 0,96 à 0,98 pour 10 réservations sur 12 (ce qui soutient l'unité ms supposée), mais 1,41 et 1,13 pour les deux autres, non expliqués.
 - **[Q]** Un des quatre fichiers `mgen.csv` URLLC est vide (ou deux) : s'agit-il d'UE non attachés ? Non étudié.
 - **[H]** 12 réservations ne garantissent pas la représentativité (autres slicings, début/fin de campagne seulement couverts par rang).
-- **[Q]** Lancer ou non une sensibilité à la fenêtre (1, 2, 2,5 s sur le reward, sans coût) : à décider ; non lancée.
+## Décision : pas de sensibilité à la fenêtre (arbitrage de l'auteur du projet)
+Une sensibilité à 1, 2 et 2,5 s **n'est pas lancée**, et aucune autre analyse de fenêtre ne l'est sans accord. Raisons, appuyées sur les mesures ci-dessus :
+- **Le reward seul ne répond pas à R2-W1.** La critique porte sur la boucle de contrôle (10 ms à 1 s) et sur la contrainte de sécurité ; or le reward ne porte pas la contrainte, et aucune fenêtre ≤ 1 s n'est possible pour l'état (pas de 0,25 s, critère ≥ 3 échantillons non atteint à 0,5 s et en dessous). Seul 1 s l'atteint, à la limite haute de la plage Near-RT.
+- **Le coût est trop bruité** : au plus ~30 paquets URLLC par seconde (pooled, 2 à 3 UE actifs), médiane 20 à 30 par fenêtre de 1 s ; la fraction de violations (d = 0,03) n'est pas résoluble à cette échelle (aucune réservation sur 12 n'atteint 34 paquets dans 99 % des fenêtres à 1 s ; 3 sur 12 à 2 s, 4 sur 12 à 2,5 s, 7 sur 12 à 5 s).
+- **L'alignement des horloges** (décalage UE estimé, p5 −1,7 s / p95 +3,8 s, [H] d'après la phase 1) borne en pratique les fenêtres plus fines que quelques secondes.
+- **Aucune transition avec changement d'action** (dataset_notes) : une fenêtre plus fine ne rend pas le contrôle séquentiel identifiable.
+Dans le papier, ces limites se disent comme des limites de données mesurées, pas comme une réponse à la plage Near-RT.
