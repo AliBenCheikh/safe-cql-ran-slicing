@@ -24,12 +24,12 @@ def test_window_criteria():
 def test_reads_timestamp_columns_only(tmp_path):
     r = tmp_path / "RESERVATION-1"
     (r / "bs").mkdir(parents=True)
-    (r / "ue_001").mkdir()
+    (r / "ue_001010123456006").mkdir()
     n = 60
     pd.DataFrame({"time": np.arange(n) * 1000.0, "nof_ue": 5, "secret": "x"}).to_csv(r / "bs" / "enb_metrics.csv", index=False)
     pd.DataFrame({"Timestamp": np.arange(n) * 1000.0, "mcs": 3}).to_csv(r / "bs" / "1010123456002_metrics.csv", index=False)
-    pd.DataFrame({"time": np.arange(n) * 1000.0, "dl_brate": 1.0}).to_csv(r / "ue_001" / "ue_metrics.csv", sep=";", index=False)
-    pd.DataFrame({"Sent Time": np.arange(0, 60, 0.01), "Received Time": np.arange(0, 60, 0.01) + 0.005, "Seq": 1}).to_csv(r / "ue_001" / "mgen.csv", index=False)
+    pd.DataFrame({"time": np.arange(n) * 1000.0, "dl_brate": 1.0}).to_csv(r / "ue_001010123456006" / "ue_metrics.csv", sep=";", index=False)
+    pd.DataFrame({"Sent Time": np.arange(0, 60, 0.01), "Received Time": np.arange(0, 60, 0.01) + 0.005, "Seq": 1}).to_csv(r / "ue_001010123456006" / "mgen.csv", index=False)
     out, errs = m.read_reservation(str(r))
     assert not errs and set(out) == {"enb", "bs_ue", "ue_metrics", "mgen_sent", "mgen_recv"}
     rep = m.analyse_reservation(str(r))
@@ -41,7 +41,7 @@ def test_reads_timestamp_columns_only(tmp_path):
 def test_source_has_no_unrestricted_read():
     import inspect
     src = inspect.getsource(m)
-    assert src.count("read_csv") == 2 and "usecols" in src            # sample list + the single timestamp reader
+    assert src.count("pd.read_csv(path") == 1 and "usecols=[col]" in src       # the only raw-file reader is _col, timestamp column only
 
 
 def test_select_sample_first_middle_last_deterministic():
