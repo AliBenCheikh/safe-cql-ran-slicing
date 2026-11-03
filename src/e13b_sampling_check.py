@@ -27,6 +27,7 @@ import pandas as pd
 ROOT = "/home/AliBen/data/safe-cql/dataset-kpm"
 WINDOWS = (0.1, 0.25, 0.5, 1.0, 2.0, 2.5, 5.0, 10.0)
 MIN_KPM, MIN_PKT, SHARE = 3, 34, 0.99
+URLLC_IMSI = {"006", "007", "008", "009"}
 SCHED_DIR = {0: 0, 1: 2}      # canonical sched bin -> scheduling_<policy> directory
 
 
@@ -86,9 +87,12 @@ def read_reservation(res_dir):
         except Exception as e:
             errs.append(f"{os.path.basename(p)}: {e!r}")
     for d in sorted(glob.glob(os.path.join(res_dir, "ue_*"))):
+        urllc = d[-3:] in URLLC_IMSI                      # mgen is pooled over the URLLC UEs only (the cost is URLLC)
         for key, fn, col, sep, div in (("ue_metrics", "ue_metrics.csv", "time", ";", 1000.0),
                                        ("mgen_sent", "mgen.csv", "Sent Time", ",", 1.0),
                                        ("mgen_recv", "mgen.csv", "Received Time", ",", 1.0)):
+            if key.startswith("mgen") and not urllc:
+                continue
             try:
                 out[key].append(_col(os.path.join(d, fn), col, sep) / div)
             except Exception as e:
@@ -121,6 +125,21 @@ def analyse_reservation(res_dir):
     return rep
 
 
+def select_sample(times, usable):
+    """12 reservations: per (cluster, sched) the first / middle (index n//2) / last by chronological rank (`start_utc`),
+    among the usable TRAIN reservations. Deterministic, no randomness."""
+    t = times[times["reservation"].isin(set(usable))].copy()
+    t["start"] = pd.to_datetime(t["start_utc"], utc=True)
+    t = t.sort_values("start")
+    rows = []
+    for (c, s), g in t.groupby(["cluster", "sched"]):
+        g = g.reset_index(drop=True)
+        for lab, i in (("debut", 0), ("milieu", len(g) // 2), ("fin", len(g) - 1)):
+            r = g.loc[i]
+            rows.append((int(c), int(s), lab, r["reservation"], int(r["slicing"]), str(r["start"]), len(g)))
+    return pd.DataFrame(rows, columns=["cluster", "sched", "position", "reservation", "slicing", "start_utc", "n_cell"])
+
+
 def res_path(row, root=ROOT):
     return os.path.join(root, f"cluster_{row.cluster}", f"slicing_{row.slicing}", f"scheduling_{SCHED_DIR[int(row.sched)]}", row.reservation)
 
@@ -129,7 +148,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--sample", default="results/e13b_sample.csv")
     ap.add_argument("--out", default="results/e13b_sampling")
+    ap.add_argument("--make-sample", action="store_true", help="write the sample list (derived files only) and stop")
     a = ap.parse_args()
+    if a.make_sample:
+        usable = pd.read_parquet("results/dataset_canonical.parquet", columns=["reservation", "split"],
+                                 filters=[("split", "==", "train")])["reservation"]
+        select_sample(pd.read_csv("results/d8_times.csv"), usable).to_csv(a.sample, index=False)
+        return
     sample = pd.read_csv(a.sample)
     assert len(sample) == 12 and sample["cluster"].isin([2, 3]).all(), "train clusters only"
     reps = []

@@ -42,3 +42,20 @@ def test_source_has_no_unrestricted_read():
     import inspect
     src = inspect.getsource(m)
     assert src.count("read_csv") == 2 and "usecols" in src            # sample list + the single timestamp reader
+
+
+def test_select_sample_first_middle_last_deterministic():
+    rows = [{"reservation": f"R{i}", "cluster": 2, "sched": 0, "slicing": 1, "start_utc": f"2024-02-1{i % 10} 00:00:00+00:00"} for i in range(5)]
+    rows.append({"reservation": "TEST", "cluster": 2, "sched": 0, "slicing": 1, "start_utc": "2024-02-01 00:00:00+00:00"})
+    s = m.select_sample(pd.DataFrame(rows), [f"R{i}" for i in range(5)])            # TEST is not usable train
+    assert s["reservation"].tolist() == ["R0", "R2", "R4"] and s["position"].tolist() == ["debut", "milieu", "fin"]
+
+
+def test_mgen_pooled_over_urllc_only(tmp_path):
+    r = tmp_path / "R"
+    (r / "bs").mkdir(parents=True)
+    for imsi in ("002", "006"):
+        (r / f"ue_001010123456{imsi}").mkdir()
+        pd.DataFrame({"Sent Time": [0.0, 1.0], "Received Time": [0.1, 1.1]}).to_csv(r / f"ue_001010123456{imsi}" / "mgen.csv", index=False)
+    out, _ = m.read_reservation(str(r))
+    assert len(out["mgen_recv"]) == 1
