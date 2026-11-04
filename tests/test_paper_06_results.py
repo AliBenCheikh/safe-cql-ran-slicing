@@ -86,3 +86,31 @@ def test_figure_script_reads_training_artifacts_only():
     assert "lambda_history" in code and "test_split_read" in code
     assert not re.search(r"(open|read_text|load)\([^)]*test_results", body.replace('"""', ""))
     assert "data/" not in body.split('"""')[2] if body.count('"""') >= 2 else True
+
+
+def test_main_tex_inputs_sections_in_order_and_no_dangling_refs():
+    main = (ROOT / "paper" / "main.tex").read_text(encoding="utf-8")
+    inputs = re.findall(r"\\input\{sections/([^}]+)\}", main)
+    assert inputs == ["02_data_audit", "03_formulation", "04_methods", "05_evaluation", "06_results"]
+    assert "\\documentclass[conference]{IEEEtran}" in main and "\\bibliography{refs}" in main
+    text = "\n".join(p.read_text(encoding="utf-8") for p in sorted((ROOT / "paper" / "sections").glob("*.tex")))
+    code = "\n".join(l.split("%", 1)[0] for l in text.splitlines())
+    labels = set(re.findall(r"\\label\{([^}]+)\}", text))
+    assert {"sec:audit", "sec:method", "sec:eval", "sec:results", "sec:leakage"} <= labels
+    assert not (set(re.findall(r"\\(?:ref|eqref)\{([^}]+)\}", code)) - labels)
+    bib = (ROOT / "paper" / "refs.bib").read_text(encoding="utf-8")
+    for key in re.findall(r"\\cite\{([^}]+)\}", code):
+        assert f"@misc{{{key}," in bib, key
+
+
+def test_windup_is_secondary_hypothesis_after_observation():
+    prose = _prose()
+    i, j = prose.index("keeps rising while the in-sample cost"), prose.index("windup")
+    assert i < j and "untested hypothesis" in prose[j - 80:j]
+    assert prose.count("windup") == 1
+
+
+def test_figure_has_e2_300_epoch_panel_and_caption():
+    assert "current_300ep" in FIG.read_text(encoding="utf-8")
+    prose = _prose()
+    assert "in-sample" in prose and "does not converge by the criterion" in prose

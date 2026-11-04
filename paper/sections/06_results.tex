@@ -13,7 +13,7 @@ No result below is a guarantee, and Sec.~\ref{sec:claims_not} lists what the res
 \subsection{Final Reading by Test Script}
 \label{sec:res_e12}
 
-Table~\ref{tab:e12_main} gives the ten policies on the main test script, and Table~\ref{tab:e12_other} gives the two small scripts and the whole test set.% STRUCT
+Table~\ref{tab:e12_main} gives the ten policies on the main test script, and Table~\ref{tab:e12_other} gives the two small scripts and the whole test set.% REG: TAB-a, TAB-b
 The test set is in practice one script: it holds 177 of the 196 usable reservations (90\%), so the pooled values are about 90\% one script and are not a result over several scripts.% REG: D6-b, E12-b
 The two other scripts have 10 and 9 reservations, the second being flagged low-$n$, and their intervals are wide and are not interpreted.% REG: E12-j, GRP-a
 The intervals are conditional on the script and measure the dispersion of reservations inside it, not the variability between scripts.% REG: BOOT-a
@@ -21,7 +21,7 @@ This is the second reading of the test, and the expectations were not blind.% RE
 
 \begin{table*}[t]
 \centering
-\caption{Final reading on the main test script (c40f2fe7, 177 reservations). DM: direct method on the training tables, cost with its 95\% bootstrap interval conditional on the script. Matched: cost observed on the windows where the chosen action is the logged one, with its coverage and the upper bound of its 95\% interval. Rewards in Mbps, costs per window, budget $d=0.03$. Always-RR, always-PF and best-fixed read the logged action and are not deployable.}% REG: E12-a, E12-c, E12-d, E12-e, E12-f, E12-g, E12-h, E12-i, BASE-a
+\caption{Final reading on the main test script (c40f2fe7, 177 reservations). DM: direct method on the training tables, cost with its 95\% bootstrap interval conditional on the script. Matched: cost observed on the windows where the chosen action is the logged one, with its coverage and the upper bound of its 95\% interval. Rewards in Mbps, costs per window, budget $d=0.03$. Always-RR, always-PF and best-fixed read the logged action and are not deployable.}% REG: E12-a, E12-c, E12-d, E12-e, E12-f, E12-g, E12-h, E12-i, BASE-a, TAB-a
 \label{tab:e12_main}
 \footnotesize
 \begin{tabular}{lcccccc}
@@ -44,7 +44,7 @@ table-greedy & 9.069 & 0.0217 [0.0204, 0.0230] & 0.0310 & 9.5\% & 0.0562 & no \\
 
 \begin{table*}[t]
 \centering
-\caption{Final reading on the two small test scripts (1dd38082, 10 reservations; 3e1a4369, 9 reservations, flagged low-$n$) and on the whole test set (pooled, about 90\% one script). Same columns as Table~\ref{tab:e12_main} without the upper bound; ``undef.'' means that no window is matched. These rows are not interpreted per script.}% REG: E12-b, E12-j, GRP-a
+\caption{Final reading on the two small test scripts (1dd38082, 10 reservations; 3e1a4369, 9 reservations, flagged low-$n$) and on the whole test set (pooled, about 90\% one script). Same columns as Table~\ref{tab:e12_main} without the upper bound; ``undef.'' means that no window is matched. These rows are not interpreted per script.}% REG: E12-b, E12-j, GRP-a, TAB-b
 \label{tab:e12_other}
 \scriptsize
 \setlength{\tabcolsep}{3pt}
@@ -93,19 +93,20 @@ The value 12.22 recorded in the original notebook is a recorded output that we d
 
 \paragraph{Training does not converge in the sense of the frozen criterion.}
 None of the 60 diagnostic runs (six variants, two folds, five seeds) satisfies the frozen convergence criterion, and the condition on the cost band holds in 0 of the 60.% REG: E2-a
-In the same diagnostic, the final $\lambda$ with $\alpha=0.5$ and $\gamma=0.7$ is $1.935\pm0.045$ and $0.283\pm0.011$ on the two scripts, and with 300 epochs it reaches 5.838 and 0.906 and is still rising.% REG: E2-b
+In the same diagnostic, the final $\lambda$ with $\alpha=0.5$ and $\gamma=0.7$ is $1.935\pm0.045$ and $0.283\pm0.011$ on the two scripts, and with 300 epochs it reaches 5.838 and 0.906 and is still rising.% REG: E2-b, LAM-c
+Over these 300 epochs the greedy cost on the training windows stays at the level of the 100-epoch runs (0.0359 and 0.0310 against 0.0358 and 0.0311): $\lambda$ keeps rising while the in-sample cost does not move (the rise of $\lambda$ is in the bottom panel of Fig.~\ref{fig:curves}).% REG: LAM-c, E2-b
 In the final evaluation, none of the 15 Safe-CQL runs (three configurations, five seeds) converges either.% REG: E12P-e
 In each of these 15 runs $\lambda$ at epoch 99 is larger than at epoch 79 (Fig.~\ref{fig:curves}).% REG: E12P-c
 The final $\lambda$ is 0.1028 to 0.1272 at $\alpha=0.1$, 0.7497 to 0.9046 at $\alpha=0.5$ and 0.4398 to 0.4910 for $\gamma=0$.% REG: E12P-c
 At $\alpha=0.5$ the greedy cost on the training windows ends at 0.0323 to 0.0329, above $d$, while $\lambda$ keeps rising; at $\alpha=0.1$ it ends at 0.0294 to 0.0306.% REG: E12P-c
 At $\alpha=0.1$ the spread of $\lambda$ over the last 20 epochs is below 0.02 for three seeds out of five, but the cost band and the slope conditions fail for all five.% REG: E12P-e
-We read the growth of $\lambda$ at strong $\alpha$ as a possible windup of the dual update, which integrates a constraint violation that the policy does not remove; this is a hypothesis that no experiment here isolates, since $\alpha$ also changes the scale of the $Q$ values.% REG: SAFE-b, E2-d, E11-d
+One untested hypothesis is a windup of the dual update, which would integrate a violation that the policy does not remove; no experiment here isolates it.% REG: LAM-d, SAFE-b
 The final $\lambda$ should therefore not be read as a converged dual variable, and the cost of Safe-CQL should not be read as stabilized on the budget.% REG: E12P-e, NO-budget
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{figures/courbes_apprentissage.pdf}
-\caption{Multiplier $\lambda$ (top) and greedy cost on the training windows (bottom) against the epoch for the three Safe-CQL configurations of the final evaluation: mean over five seeds and min--max band. Training data only, cost read in the training table. $\lambda$ does not converge by the criterion of the first diagnostic: none of the 15 runs satisfies it. The curves do not show a result on the test set.}% REG: E12P-c, E12P-e, CONV-a
+\caption{Training curves, mean over five seeds with a min--max band, training data only. Top and middle: multiplier $\lambda$ and greedy cost against the epoch for the three Safe-CQL configurations of the final evaluation (100 epochs). Bottom: $\lambda$ of the 300-epoch diagnostic runs ($\alpha=0.5$, $\gamma=0.7$) on the two training scripts. All costs are in-sample: they are read in the training table on the training windows. $\lambda$ does not converge by the criterion of the first diagnostic: none of the 15 final runs satisfies it, and none of the 60 diagnostic runs. The curves do not show a result on the test set.}% REG: E12P-c, E12P-e, CONV-a, E2-a, LAM-c
 \label{fig:curves}
 \end{figure}
 
@@ -143,7 +144,7 @@ The frozen criterion for a net improvement is a cost lower by more than twice th
 The margin is thin: the threshold is about 0.0032 on the main script for a difference of 0.0029, and about 0.0030 on the whole test set for a difference of 0.0032, so the criterion is not met on the main script and is met on the pooled set, which is 90\% that script.% REG: E12-i
 The expectation of no net improvement therefore holds on the main script and does not hold on the pooled set, and we report it as it is.% REG: E12-i, E12-k
 The difference is of the order of the variability across seeds (a standard deviation of the DM cost of 0.0016 and 0.0015 at $\gamma=0.7$, 0.0009 and 0.0008 at $\gamma=0$), and the criterion is arbitrary.% REG: E12-i
-The ablation does not stop the drift of $\lambda$: the final $\lambda$ is 0.4398 to 0.4910, above the values at $\gamma=0.7$ and $\alpha=0.1$, and the diagnostic runs at $\alpha=0.5$ also show a larger $\lambda$ with $\gamma=0$.% REG: E12P-c, E2-c
+The ablation does not stop the drift of $\lambda$: the final $\lambda$ is 0.4398 to 0.4910, above the values at $\gamma=0.7$ and $\alpha=0.1$, and the diagnostic runs at $\alpha=0.5$ also show a larger $\lambda$ with $\gamma=0$.% REG: LAM-a, LAM-b, E12P-c, E2-c
 We therefore do not conclude that $\gamma=0$ is the cause of the divergence of $\lambda$, nor that it is preferable.% REG: E2-c, E12-i
 
 \subsection{What the Results Do Not Show}

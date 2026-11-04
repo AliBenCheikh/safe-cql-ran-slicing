@@ -3,7 +3,7 @@
 Produit par `src/checks/verifie_registre.py` (lecture seule ; aucun calcul nouveau ; ni `data/` ni `tests/` lus).
 Règles de verdict : voir la docstring du script. Seules les lignes contenant au moins un nombre significatif sont listées.
 
-Total : 168 lignes — OK 166, AMBIGU 2, ABSENT 0.
+Total : 174 lignes — OK 172, AMBIGU 2, ABSENT 0.
 
 | ligne | repère | verdict | détail |
 |---|---|---|---|
@@ -175,3 +175,9 @@ Total : 168 lignes — OK 166, AMBIGU 2, ABSENT 0.
 | 448 | CRIT-a | OK | sources : e12_attente_pre_test |
 | 449 | CONV-a | OK | sources : e2_safe_cql_diagnostic |
 | 450 | FOLD-a | OK | aucun nombre à vérifier |
+| 462 | TAB-a | OK | aucun nombre à vérifier |
+| 463 | TAB-b | OK | aucun nombre à vérifier |
+| 464 | LAM-a | OK | sources : e12_artefacts_entrainement |
+| 465 | LAM-b | OK | sources : e2_safe_cql_diagnostic |
+| 466 | LAM-c | OK | sources : e2_safe_cql_diagnostic |
+| 467 | LAM-d | OK | aucun nombre à vérifier |
